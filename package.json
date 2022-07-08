@@ -1,0 +1,14 @@
+{
+  "name": "space-game",
+  "version": "1.0.0",
+  "description": "demo for space game",
+  "main": "test.js",
+  "scripts": {
+    "test": "electron ."
+  },
+  "author": "Michael Maltsev",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^19.0.7"
+  }
+}

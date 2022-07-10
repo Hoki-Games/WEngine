@@ -5,16 +5,21 @@ const newGameBtn = document.getElementById('newGameBtn');
 const continueBtn = document.getElementById('continueBtn');
 const optionsBtn = document.getElementById('optionsBtn');
 const secretBtn = document.getElementById('secretBtn');
+
+const body = document.getElementsByTagName('body');
+const menu = document.getElementById('menu')
+
 const nh = document.getElementById('nh');
 const bozo = document.getElementById('bozo');
 const bruh = document.getElementById('bruh');
 const cat = document.getElementById('cat')
 
 const canvas = document.getElementById('canvas');
-canvas.width = 700;
+canvas.width = 1300;
 canvas.height = 650;
 canvas.style = "border:1px solid #000000;";
 const ctx = canvas.getContext('2d');
+canvas.style.display = 'none';
 
 //don't mind this cringe
 
@@ -25,6 +30,11 @@ function delay(ms) {
 }
 
 newGameBtn.addEventListener('click', () => {
+   menu.style.display = 'none';
+   canvas.style.display = 'block';
+
+   ctx.clearRect(0, 0, canvas.width, canvas.height)
+
    delay(1000)
       .then(() => {
          ctx.font = "30px Arial";
@@ -48,6 +58,14 @@ newGameBtn.addEventListener('click', () => {
                ctx.font = "30px Arial";
                ctx.fillText(">epic", 50, 200);
             })
+            .then(() => {
+               delay(3000)
+               .then(() => {
+                  ctx.clearRect(0, 0, canvas.width, canvas.height)
+                  ctx.fillStyle = 'blue';
+                  ctx.fillRect(Math.floor(Math.random()*1000), Math.floor(Math.random()*600), 50, 50)
+               })
+            })
          })
       })
    })
@@ -55,6 +73,12 @@ newGameBtn.addEventListener('click', () => {
 })
 
 continueBtn.addEventListener('click', () => {
+   menu.style.display = 'none';
+   canvas.style.display = 'block';
+
+   ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+   //this is like a cutscene/loading screen of some shit idk
    delay(1000)
       .then(() => {
       ctx.font = "30px Arial";
@@ -79,12 +103,28 @@ continueBtn.addEventListener('click', () => {
                ctx.fillText(">great", 50, 200);
             })
          })
+         .then(() => {
+            delay(3000)
+            .then(() => {
+               ctx.clearRect(0, 0, canvas.width, canvas.height)
+               ctx.fillStyle = 'red';
+               ctx.fillRect(Math.floor(Math.random()*1000), Math.floor(Math.random()*600), 100, 100)
+               ctx.fillRect(Math.floor(Math.random()*1000), Math.floor(Math.random()*600), 100, 100)
+               ctx.fillRect(Math.floor(Math.random()*1000), Math.floor(Math.random()*600), 100, 100)
+               ctx.fillRect(Math.floor(Math.random()*1000), Math.floor(Math.random()*600), 100, 100)
+               ctx.fillStyle = 'black';
+               ctx.fillRect(Math.floor(Math.random()*1000), Math.floor(Math.random()*600), 50, 50)
+            })
+         })
       })
    })
-
 })
 
 optionsBtn.addEventListener('click', () => {
+   canvas.style.display = 'block';
+   
+   ctx.clearRect(0, 0, canvas.width, canvas.height)
+
    delay(1000)
       .then(() => {
       ctx.font = "30px Arial";
@@ -108,6 +148,12 @@ optionsBtn.addEventListener('click', () => {
                ctx.font = "30px Arial";
                ctx.fillText(">cringe", 50, 200);
             })
+            .then(() => {
+               delay(3000)
+               .then(() => {
+                  
+               })
+            })
          })
       })
    })
@@ -115,6 +161,11 @@ optionsBtn.addEventListener('click', () => {
 })
 
 secretBtn.addEventListener('click', () => {
+   menu.style.display = 'none';
+   canvas.style.display = 'block';
+
+   ctx.clearRect(0, 0, canvas.width, canvas.height)
+
    delay(1000)
       .then(() => {
          ctx.drawImage(cat, 10, 10, 300, 300)

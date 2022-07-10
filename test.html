@@ -2,28 +2,25 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
-    <meta
-      http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'"
-    />
-    <meta
-      http-equiv="X-Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'"
-    />
     <title>Space game (pre-alpha-pre-demo)</title>
+    <script src="renderer.js" defer></script>
   </head>
   <body>
-    <img src="props/2021-06-24_13-12-41.png" id="bozo" hidden>
-    <img src="props/2022-02-23_11-20-32.png" id="nh" hidden>
-    <img src="props/bruh.png" id="bruh" hidden>
-    <img src="props/unknown (1).png" id="cat" hidden>
-    <button id="continueBtn">Continue</button>
-    <button id="newGameBtn">New game</button>
-    <button id="optionsBtn">Options</button>
-    <button id="secretBtn">????</button>
-    <h1>Main menu here (CTRL+R to refresh)</h1>
-    <script src="renderer.js" defer></script>
+    <div id="props" hidden>
+      <img src="props/2021-06-24_13-12-41.png" id="bozo">
+      <img src="props/2022-02-23_11-20-32.png" id="nh">
+      <img src="props/bruh.png" id="bruh">
+      <img src="props/unknown (1).png" id="cat">
+    </div>
+
+    <div id="menu">
+      <h1>Main menu here (CTRL+R to refresh)</h1>
+      <button id="continueBtn">Continue</button>
+      <button id="newGameBtn">New game</button>
+      <button id="optionsBtn">Options</button>
+      <button id="secretBtn">????</button>
+    </div>
+
     <canvas id="canvas"></canvas>
   </body>
 </html>

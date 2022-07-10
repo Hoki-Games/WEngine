@@ -6,11 +6,13 @@ const createWindow = () => {
     width: 400,
     height: 300,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, 'preload.js'),
+      sandbox: true,
+      contextIsolation: true
     }
   })
   win.loadFile('test.html')
-  console.log(win.webContents)
+  // console.log(win.webContents)
 }
 
 app.whenReady().then(() => {

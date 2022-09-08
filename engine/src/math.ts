@@ -1,3 +1,6 @@
+export type FixedArray<T, L extends number> =
+	[T, ...Array<T>] & { readonly length: L }
+
 export type WVec2<T1, T2 = T1> = [T1, T2]
 export type WVec3<T1, T2 = T1, T3 = T1> = [T1, T2, T3]
 export type WVec4<T1, T2 = T1, T3 = T1, T4 = T1> = [T1, T2, T3, T4]

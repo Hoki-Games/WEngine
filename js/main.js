@@ -1,24 +1,17 @@
-import { WScene } from './engine.js';
+import { WScene } from './graphics.js';
 import { WCustomObject, WOneColorObject, WTextureObject } from './objects.js';
-const sources = Promise.all([
-    fetch('./shaders/tex.vert').then(v => v.text()),
-    fetch('./shaders/tex2.frag').then(v => v.text()),
-    new Promise(res => {
-        const img = new Image();
-        img.src = './fnap.png';
-        img.addEventListener('load', () => res(img));
-    }),
-    new Promise(res => {
-        const img = new Image();
-        img.src = './irbis.png';
-        img.addEventListener('load', () => res(img));
-    }),
-    new Promise(res => {
-        const img = new Image();
-        img.src = './glass.jpg';
-        img.addEventListener('load', () => res(img));
-    })
-]);
+import AssetsLoader from './loader.js';
+const assetsLoader = new AssetsLoader({
+    shaders: {
+        sh1: './shaders/tex.vert',
+        sh2: './shaders/tex2.frag'
+    },
+    images: {
+        img1: './fnap.png',
+        img2: './irbis.png',
+        img3: './glass.jpg'
+    }
+});
 const scene = globalThis.scene = new WScene({
     canvas: document.getElementById('display'),
     settings: {
@@ -33,27 +26,28 @@ const scene = globalThis.scene = new WScene({
         }
     }
 });
-const basic1 = new WOneColorObject(scene, [1, .6, .6, 1], [[
-        [-1, 1, 0],
-        [-1, 0, 0],
-        [1, 1, 0]
-    ], [
-        [-1, -1, .5],
-        [-1, 0, .5],
-        [1, -1, .5]
-    ]]);
-const basic2 = new WOneColorObject(scene, [0, .8, 1, 1], [[
-        [-1, 1, .5],
-        [1, 1, .5],
-        [1, 0, .5]
-    ], [
-        [-1, -1, 0],
-        [1, -1, 0],
-        [1, 0, 0]
-    ]]);
 window.addEventListener('load', async () => {
-    const [sh1, sh2, img1, img2, img3] = await sources;
-    const tex = new WTextureObject(img3, scene, [[
+    const { shaders: { sh1, sh2 }, images: { img1, img2, img3 } } = await assetsLoader.response;
+    globalThis.img = img1;
+    const basic1 = new WOneColorObject(scene, [1, .6, .6, 1], [[
+            [-1, 1, 0],
+            [-1, 0, 0],
+            [1, 1, 0]
+        ], [
+            [-1, -1, .5],
+            [-1, 0, .5],
+            [1, -1, .5]
+        ]]);
+    const basic2 = new WOneColorObject(scene, [0, .8, 1, 1], [[
+            [-1, 1, .5],
+            [1, 1, .5],
+            [1, 0, .5]
+        ], [
+            [-1, -1, 0],
+            [1, -1, 0],
+            [1, 0, 0]
+        ]]);
+    const tex = globalThis.tex = new WTextureObject(img3, scene, [[
             [-.9, .9, -.5],
             [.5764, .9, -.5],
             [-.9, .1618, -.5]
@@ -70,7 +64,7 @@ window.addEventListener('load', async () => {
             [0, 1 / 6],
             [1, 1]
         ]]);
-    const tex2 = new WCustomObject({
+    const tex2 = globalThis.tex2 = new WCustomObject({
         scene,
         trisCount: 2,
         shaders: [{
@@ -155,14 +149,27 @@ window.addEventListener('load', async () => {
     basic2.init();
     tex.init();
     tex2.init();
-    scene.draw();
-    basic1.draw();
-    basic2.draw();
-    tex.draw();
-    tex2.draw();
-    scene.draw();
-    basic1.draw();
-    basic2.draw();
-    tex.draw();
-    tex2.draw();
+    let lastTime = 0;
+    const draw = globalThis.draw = (time) => {
+        const dt = time - lastTime;
+        lastTime = time;
+        scene.draw();
+        basic1.draw();
+        basic2.draw();
+        tex.draw();
+        tex2.draw();
+        const move = time / 160 / 6;
+        tex.setUVTriangle(0, [
+            [0, 1 - move],
+            [1, 1 - move],
+            [0, 1 / 6 - move]
+        ]);
+        tex.setUVTriangle(1, [
+            [1 + move, 1 / 6 + move],
+            [0 + move, 1 / 6 + move],
+            [1 + move, 1 + move]
+        ]);
+        requestAnimationFrame(draw);
+    };
+    requestAnimationFrame(draw);
 });

@@ -1,4 +1,4 @@
-import { WScene } from './engine.js'
+import { WScene } from './graphics.js'
 import { WCustomObject, WOneColorObject, WTextureObject } from './objects.js'
 import AssetsLoader from './loader.js';
 
@@ -42,6 +42,8 @@ window.addEventListener('load', async () => {
 		}
 	} = await assetsLoader.response
 
+	globalThis.img = img1
+
 	const basic1 = new WOneColorObject(scene, [1, .6, .6, 1], [[
 		[-1, 1, 0],
 		[-1, 0, 0],
@@ -62,7 +64,7 @@ window.addEventListener('load', async () => {
 		[1, 0, 0]
 	]])
 
-	const tex = new WTextureObject(img3, scene, [[
+	const tex = globalThis.tex = new WTextureObject(img3, scene, [[
 		[-.9, .9, -.5],
 		[.5764, .9, -.5],
 		[-.9, .1618, -.5]
@@ -80,7 +82,7 @@ window.addEventListener('load', async () => {
 		[1, 1]
 	]])
 
-	const tex2 = new WCustomObject({
+	const tex2 = globalThis.tex2 = new WCustomObject({
 		scene,
 		trisCount: 2,
 		shaders: [{
@@ -170,15 +172,34 @@ window.addEventListener('load', async () => {
 	tex.init()
 	tex2.init()
 
-	scene.draw()
-	basic1.draw()
-	basic2.draw()
-	tex.draw()
-	tex2.draw()
+	let lastTime = 0;
 
-	scene.draw()
-	basic1.draw()
-	basic2.draw()
-	tex.draw()
-	tex2.draw()
+	const draw = globalThis.draw = (time: number) => {
+		const dt = time - lastTime;
+		lastTime = time;
+
+		scene.draw()
+		basic1.draw()
+		basic2.draw()
+		tex.draw()
+		tex2.draw()
+
+		const move = time / 160 / 6
+
+		tex.setUVTriangle(0, [
+			[0, 1 - move],
+			[1, 1 - move],
+			[0, 1 / 6 - move]
+		])
+
+		tex.setUVTriangle(1, [
+			[1 + move, 1 / 6 + move],
+			[0 + move, 1 / 6 + move],
+			[1 + move, 1 + move]
+		])
+
+		requestAnimationFrame(draw)
+	}
+
+	requestAnimationFrame(draw)
 })

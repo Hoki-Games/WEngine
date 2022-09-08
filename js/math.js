@@ -1,3 +1,9 @@
+export const narrowColor = (color) => Array.isArray(color)
+    ? [...color]
+    : [color.r, color.g, color.b, color.a];
+export const narrowDimension = (color) => Array.isArray(color)
+    ? [...color]
+    : [color.x, color.y, color.width, color.height];
 /**
  * Simplifies {@link Vector2} creation.
  */

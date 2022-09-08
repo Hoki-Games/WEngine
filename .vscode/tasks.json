@@ -4,10 +4,7 @@
         {
             "label": "build ts",
             "type": "typescript",
-            "tsconfig": "engine/tsconfig.json",
-            "options": {
-                "cwd": "engine"
-            },
+            "tsconfig": "tsconfig.json",
             "problemMatcher": "$tsc",
             "presentation": {
                 "showReuseMessage": false,

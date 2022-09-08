@@ -5,7 +5,7 @@ import {
 	WUniformData,
 	WTexSettings,
 	WShader
-} from './engine.js'
+} from './graphics.js'
 
 import {
 	narrowColor,
@@ -13,11 +13,10 @@ import {
 	WTri2,
 	WTri3,
 	WVec4
-} from './math'
+} from './math.js'
 
 interface WBasicObject {
 	renderer: WRenderer
-	tris: WTri3<GLfloat>[]
 
 	init(): void
 	draw(): void
@@ -25,11 +24,10 @@ interface WBasicObject {
 
 export class WCustomObject implements WBasicObject {
 	renderer: WRenderer
-	tris: WTri3<GLfloat>[]
-	readonly trisCount: number
-	attributes: { [name: string]: WAttributeData }
-	uniforms: { [name: string]: WUniformData }
-	textures: {
+	protected trisCount: number
+	protected attributes: { [name: string]: WAttributeData }
+	protected uniforms: { [name: string]: WUniformData }
+	protected textures: {
 		img: TexImageSource
 		settings?: WTexSettings
 	}[]
@@ -71,9 +69,81 @@ export class WCustomObject implements WBasicObject {
 	draw() {
 		this.renderer.draw(this.trisCount * 3)
 	}
+
+	getAttribute(name: string) {
+		return this.renderer.getAttribute(name)
+	}
+	setAttribute(
+		name: string,
+		value: BufferSource,
+		type: GLenum,
+		length: GLint
+	) {
+		this.renderer.setAttribute(name, value, type, length);
+	}
+
+	getUniform(name: string) {
+		return this.renderer.getUniform(name)
+	}
+	setUniform(
+		name: string,
+		value: Iterable<number>,
+		type: GLenum
+	) {
+		this.renderer.setUniform(name, value, type);
+	}
+
+	getTexture(id: number) {
+		return this.renderer.getTexture(id)
+	}
+	setTexture(
+		id: number,
+		img: TexImageSource,
+		settings?: WTexSettings
+	) {
+		this.renderer.setTexture({ id, img, settings });
+	}
 }
 
-export class WOneColorObject extends WCustomObject {
+abstract class WPositionedObject extends WCustomObject {
+	protected tris: (WTri3<GLfloat> | [])[] = []
+
+	getTriangle(id: number) {
+		return this.tris[id];
+	}
+
+	setTriangle(id: number, triangle: WTri3<GLfloat>) {
+		if (id < 0) return false
+		this.tris[id] = triangle
+		this.updateTriangles()
+		return true;
+	}
+
+	addTriangle(triangle: WTri3<GLfloat>) {
+		const id = this.tris.push(triangle) - 1;
+		this.updateTriangles()
+		return id
+	}
+
+	removeTriangle(id: number) {
+		if (!(id in this.tris)) return false
+		this.tris[id] = [];
+		this.updateTriangles()
+		return true
+	}
+
+	updateTriangles() {
+		this.trisCount = this.tris.filter(v => v.length).length
+		this.setAttribute(
+			'i_vertexPosition',
+			new Float32Array(this.tris.flat(2)),
+			WebGL2RenderingContext.FLOAT,
+			3
+		)
+	}
+}
+
+export class WOneColorObject extends WPositionedObject {
 	color: WVec4<GLclampf>
 	
 	constructor(scene: WScene, color: WColor, tris: WTri3<GLfloat>[]) {
@@ -125,9 +195,45 @@ export class WOneColorObject extends WCustomObject {
 	}
 }
 
-export class WTextureObject extends WCustomObject {
+abstract class WTexPositionedObject extends WPositionedObject {
+	protected uvmap: (WTri2<GLfloat> | [])[] = []
+
+	getUVTriangle(id: number) {
+		return this.uvmap[id];
+	}
+
+	setUVTriangle(id: number, triangle: WTri2<GLfloat>) {
+		if (id < 0) return false
+		this.uvmap[id] = triangle
+		this.updateUVTriangles()
+		return true;
+	}
+
+	addUVTriangle(triangle: WTri2<GLfloat>) {
+		const id = this.uvmap.push(triangle) - 1;
+		this.updateUVTriangles()
+		return id
+	}
+
+	removeUVTriangle(id: number) {
+		if (!(id in this.uvmap)) return false
+		this.uvmap[id] = [];
+		this.updateUVTriangles()
+		return true
+	}
+
+	updateUVTriangles() {
+		this.setAttribute(
+			'i_uvmap',
+			new Float32Array(this.uvmap.flat(2)),
+			WebGL2RenderingContext.FLOAT,
+			2
+		)
+	}
+}
+
+export class WTextureObject extends WTexPositionedObject {
 	img: TexImageSource
-	uvmap: WTri2<GLfloat>[]
 	
 	constructor(
 		img: TexImageSource,
@@ -190,8 +296,8 @@ export class WTextureObject extends WCustomObject {
 					internalformat: WebGL2RenderingContext.RGBA,
 					format: WebGL2RenderingContext.RGBA,
 					params: {
-						TEXTURE_WRAP_S: WebGL2RenderingContext.CLAMP_TO_EDGE,
-						TEXTURE_WRAP_T: WebGL2RenderingContext.CLAMP_TO_EDGE,
+						TEXTURE_WRAP_S: WebGL2RenderingContext.MIRRORED_REPEAT,
+						TEXTURE_WRAP_T: WebGL2RenderingContext.MIRRORED_REPEAT,
 						TEXTURE_MIN_FILTER: WebGL2RenderingContext.LINEAR,
 						UNPACK_FLIP_Y_WEBGL: true
 					}

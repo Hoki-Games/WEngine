@@ -1,5 +1,3 @@
 node_modules/
 package-lock.json
-/webgl/
-/props/
-/engine/js/
+/js/

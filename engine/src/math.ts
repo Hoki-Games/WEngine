@@ -5,21 +5,10 @@ export type WVec2<T1, T2 = T1> = [T1, T2]
 export type WVec3<T1, T2 = T1, T3 = T1> = [T1, T2, T3]
 export type WVec4<T1, T2 = T1, T3 = T1, T4 = T1> = [T1, T2, T3, T4]
 
-export type WTri2<T1, T2 = T1> = [
-	WVec2<T1, T2>,
-	WVec2<T1, T2>,
-	WVec2<T1, T2>
-]
-export type WTri3<T1, T2 = T1, T3 = T1> = [
-	WVec3<T1, T2, T3>,
-	WVec3<T1, T2, T3>,
-	WVec3<T1, T2, T3>
-]
-export type WTri4<T1, T2 = T1, T3 = T1, T4 = T1> = [
-	WVec4<T1, T2, T3, T4>,
-	WVec4<T1, T2, T3, T4>,
-	WVec4<T1, T2, T3, T4>
-]
+export type WTri2<T1, T2 = T1> = FixedArray<WVec2<T1, T2>, 3>
+export type WTri3<T1, T2 = T1, T3 = T1> = FixedArray<WVec3<T1, T2, T3>, 3>
+export type WTri4<T1, T2 = T1, T3 = T1, T4 = T1> =
+	FixedArray<WVec4<T1, T2, T3, T4>, 3>
 
 type WColorObject = {
 	r: GLclampf

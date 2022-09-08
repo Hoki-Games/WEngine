@@ -29,15 +29,14 @@ interface WBasicObject {
 
 export class WCustomObject implements WBasicObject {
 	renderer: WRenderer
-	tris = null
-	vertsCount: number
+	tris: WTri3[]
+	readonly trisCount: number
 	attributes: { [name: string]: WAttributeData }
 	uniforms: { [name: string]: WUniformData }
 	textures: {
 		img: TexImageSource
 		settings?: WTexSettings
 	}[]
-	trisCount
 
 	constructor({
 		scene,
@@ -78,19 +77,15 @@ export class WCustomObject implements WBasicObject {
 	}
 }
 
-export class WOneColorObject implements WBasicObject {
-	renderer: WRenderer
+export class WOneColorObject extends WCustomObject {
 	color: [GLclampf, GLclampf, GLclampf, GLclampf]
-	tris: WTri3[]
 	
 	constructor(scene: WScene, color: WShaderColor, tris: WTri3[]) {
-		this.tris = tris;
+		const clr: [GLclampf, GLclampf, GLclampf, GLclampf] = 
+			Array.isArray(color) ? [...color]
+				: [color.r, color.g, color.b, color.a];
 
-		this.color = Array.isArray(color) 
-			? [...color] 
-			: [color.r, color.g, color.b, color.a];
-
-		this.renderer = new WRenderer({
+		super({
 			scene,
 			shaders: [{
 				source: `#version 300 es
@@ -114,37 +109,30 @@ export class WOneColorObject implements WBasicObject {
 					o_fragColor = u_color;
 				}`,
 				type: WebGL2RenderingContext.FRAGMENT_SHADER
-			}]
-		});
-	}
-
-	init() {
-		this.renderer.init({
+			}],
 			uniforms: {
 				'u_color': {
-					data: this.color,
+					data: clr,
 					type: WebGL2RenderingContext.FLOAT
 				}
 			},
 			attributes: {
 				'i_vertexPosition': {
-					data: new Float32Array(this.tris.flat(2)),
+					data: new Float32Array(tris.flat(2)),
 					type: WebGL2RenderingContext.FLOAT,
 					length: 3
 				}
-			}
+			},
+			trisCount: tris.length
 		})
-	}
 
-	draw() {
-		this.renderer.draw(this.tris.length * 3);
+		this.tris = tris;
+		this.color = clr
 	}
 }
 
-export class WTextureObject implements WBasicObject {
-	renderer: WRenderer
+export class WTextureObject extends WCustomObject {
 	img: TexImageSource
-	tris: WTri3[]
 	uvmap: WTri2[]
 	
 	constructor(
@@ -153,11 +141,7 @@ export class WTextureObject implements WBasicObject {
 		tris: WTri3[],
 		uvmap: WTri2[]
 	) {
-		this.img = img;
-		this.tris = tris;
-		this.uvmap = uvmap;
-
-		this.renderer = new WRenderer({
+		super({
 			scene,
 			shaders: [{
 				source: `#version 300 es
@@ -187,12 +171,7 @@ export class WTextureObject implements WBasicObject {
 					o_fragColor = texture(u_texture, v_uvmap);
 				}`,
 				type: WebGL2RenderingContext.FRAGMENT_SHADER
-			}]
-		})
-	}
-
-	init() {
-		this.renderer.init({
+			}],
 			uniforms: {
 				'u_texture': {
 					data: [0],
@@ -201,18 +180,18 @@ export class WTextureObject implements WBasicObject {
 			},
 			attributes: {
 				'i_vertexPosition': {
-					data: new Float32Array(this.tris.flat(2)),
+					data: new Float32Array(tris.flat(2)),
 					type: WebGL2RenderingContext.FLOAT,
 					length: 3
 				},
 				'i_uvmap': {
-					data: new Float32Array(this.uvmap.flat(2)),
+					data: new Float32Array(uvmap.flat(2)),
 					type: WebGL2RenderingContext.FLOAT,
 					length: 2
 				}
 			},
 			textures: [{
-				img: this.img,
+				img: img,
 				settings: {
 					internalformat: WebGL2RenderingContext.RGBA,
 					format: WebGL2RenderingContext.RGBA,
@@ -223,11 +202,12 @@ export class WTextureObject implements WBasicObject {
 						UNPACK_FLIP_Y_WEBGL: true
 					}
 				}
-			}]
+			}],
+			trisCount: tris.length
 		})
-	}
 
-	draw() {
-		this.renderer.draw(this.tris.length * 3);
+		this.img = img;
+		this.tris = tris;
+		this.uvmap = uvmap;
 	}
 }

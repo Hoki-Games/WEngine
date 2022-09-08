@@ -1,7 +1,5 @@
 import { vec2, Vector2 } from './math.js'
 
-// TODO: Replace hardcoded values
-
 export interface WUniformData {
 	data: Iterable<number>
 	type: GLenum

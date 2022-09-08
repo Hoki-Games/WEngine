@@ -1,25 +1,18 @@
 import { WScene } from './engine.js'
 import { WCustomObject, WOneColorObject, WTextureObject } from './objects.js'
+import AssetsLoader from './loader.js';
 
-const sources = Promise.all([
-	fetch('./shaders/tex.vert').then(v => v.text()),
-	fetch('./shaders/tex2.frag').then(v => v.text()),
-	new Promise<HTMLImageElement>(res => {
-		const img = new Image()
-		img.src = './fnap.png';
-		img.addEventListener('load', () => res(img))
-	}),
-	new Promise<HTMLImageElement>(res => {
-		const img = new Image()
-		img.src = './irbis.png';
-		img.addEventListener('load', () => res(img))
-	}),
-	new Promise<HTMLImageElement>(res => {
-		const img = new Image()
-		img.src = './glass.jpg';
-		img.addEventListener('load', () => res(img))
-	})
-])
+const assetsLoader = new AssetsLoader({
+	shaders: {
+		sh1: './shaders/tex.vert',
+		sh2: './shaders/tex2.frag'
+	},
+	images: {
+		img1: './fnap.png',
+		img2: './irbis.png',
+		img3: './glass.jpg'
+	}
+})
 
 const scene = globalThis.scene = new WScene({
 	canvas: <HTMLCanvasElement>document.getElementById('display'),
@@ -36,28 +29,38 @@ const scene = globalThis.scene = new WScene({
 	}
 });
 
-const basic1 = new WOneColorObject(scene, [1, .6, .6, 1], [[
-	[-1, 1, 0],
-	[-1, 0, 0],
-	[1, 1, 0]
-], [
-	[-1, -1, .5],
-	[-1, 0, .5],
-	[1, -1, .5]
-]])
-
-const basic2 = new WOneColorObject(scene, [0, .8, 1, 1], [[
-	[-1, 1, .5],
-	[1, 1, .5],
-	[1, 0, .5]
-], [
-	[-1, -1, 0],
-	[1, -1, 0],
-	[1, 0, 0]
-]])
-
 window.addEventListener('load', async () => {
-	const [sh1, sh2, img1, img2, img3] = await sources
+	const {
+		shaders: {
+			sh1,
+			sh2
+		},
+		images: {
+			img1,
+			img2,
+			img3
+		}
+	} = await assetsLoader.response
+
+	const basic1 = new WOneColorObject(scene, [1, .6, .6, 1], [[
+		[-1, 1, 0],
+		[-1, 0, 0],
+		[1, 1, 0]
+	], [
+		[-1, -1, .5],
+		[-1, 0, .5],
+		[1, -1, .5]
+	]])
+	
+	const basic2 = new WOneColorObject(scene, [0, .8, 1, 1], [[
+		[-1, 1, .5],
+		[1, 1, .5],
+		[1, 0, .5]
+	], [
+		[-1, -1, 0],
+		[1, -1, 0],
+		[1, 0, 0]
+	]])
 
 	const tex = new WTextureObject(img3, scene, [[
 		[-.9, .9, -.5],
@@ -162,7 +165,6 @@ window.addEventListener('load', async () => {
 	})
 
 	scene.init()
-
 	basic1.init()
 	basic2.init()
 	tex.init()

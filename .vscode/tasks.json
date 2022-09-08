@@ -1,0 +1,34 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build ts",
+            "type": "typescript",
+            "tsconfig": "engine/tsconfig.json",
+            "options": {
+                "cwd": "engine"
+            },
+            "problemMatcher": "$tsc",
+            "presentation": {
+                "showReuseMessage": false,
+                "clear": true
+            }
+        },
+        {
+            "label": "build",
+            "dependsOn": "build ts",
+            "dependsOrder": "sequence",
+            "type": "shell",
+            "command": "Write-Host",
+            "args": [
+                "-ForegroundColor",
+                "Green",
+                "TypeScript compiled successfully."
+            ],
+            "presentation": {
+                "showReuseMessage": false,
+                "clear": true
+            }
+        }
+    ]
+}

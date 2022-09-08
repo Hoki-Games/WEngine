@@ -1,5 +1,5 @@
-node_modules
-.vscode
-webgl
-props
-engine/js
+node_modules/
+package-lock.json
+/webgl/
+/props/
+/engine/js/

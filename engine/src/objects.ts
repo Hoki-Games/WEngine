@@ -7,17 +7,13 @@ import {
 	WShader
 } from './engine.js'
 
-type WShaderColor = {
-	r: GLclampf
-	g: GLclampf
-	b: GLclampf
-	a: GLclampf
-} | [GLclampf, GLclampf, GLclampf, GLclampf]
-
-type WVert2 = [number, number]
-type WVert3 = [number, number, number]
-type WTri2 = [WVert2, WVert2, WVert2]
-type WTri3 = [WVert3, WVert3, WVert3]
+import {
+	narrowColor,
+	WColor,
+	WTri2,
+	WTri3,
+	WVec4
+} from './math'
 
 interface WBasicObject {
 	renderer: WRenderer
@@ -78,12 +74,10 @@ export class WCustomObject implements WBasicObject {
 }
 
 export class WOneColorObject extends WCustomObject {
-	color: [GLclampf, GLclampf, GLclampf, GLclampf]
+	color: WVec4
 	
-	constructor(scene: WScene, color: WShaderColor, tris: WTri3[]) {
-		const clr: [GLclampf, GLclampf, GLclampf, GLclampf] = 
-			Array.isArray(color) ? [...color]
-				: [color.r, color.g, color.b, color.a];
+	constructor(scene: WScene, color: WColor, tris: WTri3[]) {
+		const clr = narrowColor(color)
 
 		super({
 			scene,

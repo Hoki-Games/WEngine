@@ -1,4 +1,4 @@
-import { vec2, Vector2 } from './math.js'
+import { narrowColor, narrowDimension, WColor, WDimension } from './math.js'
 
 export interface WUniformData {
 	data: Iterable<number>
@@ -88,18 +88,8 @@ export type WShader = {
 }
 
 type WSettings = {
-	backgroundColor: {
-		r: GLclampf
-		g: GLclampf
-		b: GLclampf
-		a: GLclampf
-	} | [GLclampf, GLclampf, GLclampf, GLclampf]
-	viewport: {
-		x: GLint
-		y: GLint
-		width: GLsizei
-		height: GLsizei
-	} | [GLint, GLint, GLsizei, GLsizei]
+	backgroundColor: WColor
+	viewport: WDimension
 	enable: GLenum[]
 	depthFunc: GLenum
 }
@@ -133,17 +123,13 @@ export class WScene {
 			settings?: WTexSettings
 		}[]
 	}} = {}) {
-		const bgColor = this.settings.backgroundColor
-		if (Array.isArray(bgColor)) this.gl.clearColor(...bgColor);
-		else this.gl.clearColor(bgColor.r, bgColor.b, bgColor.g, bgColor.a);
+		this.gl.clearColor(...narrowColor(this.settings.backgroundColor))
 
 		this.settings.enable.forEach(v => this.gl.enable(v))
 
 		this.gl.depthFunc(this.settings.depthFunc);
 		
-		const vp = this.settings.viewport;
-		if (Array.isArray(vp)) this.gl.viewport(...vp);
-		else this.gl.viewport(vp.x, vp.y, vp.width, vp.height);
+		this.gl.viewport(...narrowDimension(this.settings.viewport))
 
 		for (const name in data) {
 			this.renderers[name].init(data[name])
@@ -174,7 +160,7 @@ const typeMap = {
 	[WebGL2RenderingContext.INT]: 'i',
 	[WebGL2RenderingContext.UNSIGNED_INT]: 'ui',
 	[WebGL2RenderingContext.FLOAT]: 'f'
-}
+} as const
 
 const texParamMap = {
 	PACK_ALIGNMENT: 'pixelStoreI',
@@ -201,7 +187,7 @@ const texParamMap = {
 	TEXTURE_WRAP_R: 'texI',
 	TEXTURE_MAX_LOD: 'texF',
 	TEXTURE_MIN_LOD: 'texF'
-}
+} as const
 
 export class WRenderer {
 	#data: WGLData

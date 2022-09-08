@@ -1,3 +1,36 @@
+export type WVec2 = [GLfloat, GLfloat]
+export type WVec3 = [GLfloat, GLfloat, GLfloat]
+export type WVec4 = [GLfloat, GLfloat, GLfloat, GLfloat]
+export type WTri2 = [WVec2, WVec2, WVec2]
+export type WTri3 = [WVec3, WVec3, WVec3]
+export type WTri4 = [WVec4, WVec4, WVec4]
+
+type WColorObject = {
+	r: GLclampf
+	g: GLclampf
+	b: GLclampf
+	a: GLclampf
+}
+export type WColor = WColorObject | WVec4
+
+type WDimensionObject = {
+	x: GLint
+	y: GLint
+	width: GLsizei
+	height: GLsizei
+}
+export type WDimension = WDimensionObject | WVec4
+
+export const narrowColor = (color: WColor): WVec4 =>
+	Array.isArray(color)
+		? [...color]
+		: [color.r, color.g, color.b, color.a]
+
+export const narrowDimension = (color: WDimension): WVec4 =>
+	Array.isArray(color)
+		? [...color]
+		: [color.x, color.y, color.width, color.height]
+
 /**
  * Simplifies {@link Vector2} creation.
  */

@@ -10,7 +10,8 @@ export type WTri2<T1, T2 = T1> = [
 export type WTri3<T1, T2 = T1, T3 = T1> = [
 	WVec3<T1, T2, T3>,
 	WVec3<T1, T2, T3>,
-	WVec3<T1, T2, T3>]
+	WVec3<T1, T2, T3>
+]
 export type WTri4<T1, T2 = T1, T3 = T1, T4 = T1> = [
 	WVec4<T1, T2, T3, T4>,
 	WVec4<T1, T2, T3, T4>,

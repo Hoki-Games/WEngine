@@ -19,45 +19,17 @@ interface WAttribute extends WAttributeData {
 	location: GLuint
 }
 
-interface WTexture {
+type WTexture = {
 	data: TexImageSource
 	location: WebGLTexture
 	target: GLenum
 }
 
-interface WTexParams {
-	// pixelStorei
-	PACK_ALIGNMENT?: GLint
-	UNPACK_ALIGNMENT?: GLint
-	UNPACK_FLIP_Y_WEBGL?: GLboolean
-	UNPACK_PREMULTIPLY_ALPHA_WEBGL?: GLboolean
-	UNPACK_COLORSPACE_CONVERSION_WEBGL?: GLenum
-	PACK_ROW_LENGTH?: GLint
-	PACK_SKIP_PIXELS?: GLint
-	PACK_SKIP_ROWS?: GLint
-	UNPACK_ROW_LENGTH?: GLint
-	UNPACK_IMAGE_HEIGHT?: GLint
-	UNPACK_SKIP_PIXELS?: GLint
-	UNPACK_SKIP_ROWS?: GLint
-	UNPACK_SKIP_IMAGES?: GLint
-
-	// texParametri
-	TEXTURE_MAG_FILTER?: GLenum
-	TEXTURE_MIN_FILTER?: GLenum
-	TEXTURE_WRAP_S?: GLenum
-	TEXTURE_WRAP_T?: GLenum
-	TEXTURE_BASE_LEVEL?: GLint
-	TEXTURE_COMPARE_FUN?: GLenum
-	TEXTURE_COMPARE_MOD?: GLenum
-	TEXTURE_MAX_LEVEL?: GLint
-	TEXTURE_WRAP_R?: GLenum
-
-	// texParametrf
-	TEXTURE_MAX_LOD?: GLfloat
-	TEXTURE_MIN_LOD?: GLfloat
+type WTexParams = {
+	[P in keyof typeof texParamMap]?: number | boolean
 }
 
-export interface WTexSettings {
+export type WTexSettings = {
 	target?: GLenum
 	level?: GLint
 	internalformat?: GLint

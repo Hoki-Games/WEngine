@@ -17,7 +17,7 @@ import {
 
 interface WBasicObject {
 	renderer: WRenderer
-	tris: WTri3[]
+	tris: WTri3<GLfloat>[]
 
 	init(): void
 	draw(): void
@@ -25,7 +25,7 @@ interface WBasicObject {
 
 export class WCustomObject implements WBasicObject {
 	renderer: WRenderer
-	tris: WTri3[]
+	tris: WTri3<GLfloat>[]
 	readonly trisCount: number
 	attributes: { [name: string]: WAttributeData }
 	uniforms: { [name: string]: WUniformData }
@@ -74,9 +74,9 @@ export class WCustomObject implements WBasicObject {
 }
 
 export class WOneColorObject extends WCustomObject {
-	color: WVec4
+	color: WVec4<GLclampf>
 	
-	constructor(scene: WScene, color: WColor, tris: WTri3[]) {
+	constructor(scene: WScene, color: WColor, tris: WTri3<GLfloat>[]) {
 		const clr = narrowColor(color)
 
 		super({
@@ -127,13 +127,13 @@ export class WOneColorObject extends WCustomObject {
 
 export class WTextureObject extends WCustomObject {
 	img: TexImageSource
-	uvmap: WTri2[]
+	uvmap: WTri2<GLfloat>[]
 	
 	constructor(
 		img: TexImageSource,
 		scene: WScene,
-		tris: WTri3[],
-		uvmap: WTri2[]
+		tris: WTri3<GLfloat>[],
+		uvmap: WTri2<GLfloat>[]
 	) {
 		super({
 			scene,

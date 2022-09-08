@@ -2,7 +2,7 @@ import { narrowColor, narrowDimension, WColor, WDimension } from './math.js'
 
 export interface WUniformData {
 	data: Iterable<number>
-	type: GLenum
+	type: keyof typeof typeMap
 }
 
 interface WUniform extends WUniformData {

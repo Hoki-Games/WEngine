@@ -1,9 +1,21 @@
-export type WVec2 = [GLfloat, GLfloat]
-export type WVec3 = [GLfloat, GLfloat, GLfloat]
-export type WVec4 = [GLfloat, GLfloat, GLfloat, GLfloat]
-export type WTri2 = [WVec2, WVec2, WVec2]
-export type WTri3 = [WVec3, WVec3, WVec3]
-export type WTri4 = [WVec4, WVec4, WVec4]
+export type WVec2<T1, T2 = T1> = [T1, T2]
+export type WVec3<T1, T2 = T1, T3 = T1> = [T1, T2, T3]
+export type WVec4<T1, T2 = T1, T3 = T1, T4 = T1> = [T1, T2, T3, T4]
+
+export type WTri2<T1, T2 = T1> = [
+	WVec2<T1, T2>,
+	WVec2<T1, T2>,
+	WVec2<T1, T2>
+]
+export type WTri3<T1, T2 = T1, T3 = T1> = [
+	WVec3<T1, T2, T3>,
+	WVec3<T1, T2, T3>,
+	WVec3<T1, T2, T3>]
+export type WTri4<T1, T2 = T1, T3 = T1, T4 = T1> = [
+	WVec4<T1, T2, T3, T4>,
+	WVec4<T1, T2, T3, T4>,
+	WVec4<T1, T2, T3, T4>
+]
 
 type WColorObject = {
 	r: GLclampf
@@ -11,7 +23,7 @@ type WColorObject = {
 	b: GLclampf
 	a: GLclampf
 }
-export type WColor = WColorObject | WVec4
+export type WColor = WColorObject | WVec4<GLclampf>
 
 type WDimensionObject = {
 	x: GLint
@@ -19,17 +31,18 @@ type WDimensionObject = {
 	width: GLsizei
 	height: GLsizei
 }
-export type WDimension = WDimensionObject | WVec4
+export type WDimension = WDimensionObject
+	| WVec4<GLint, GLint, GLsizei, GLsizei>
 
-export const narrowColor = (color: WColor): WVec4 =>
+export const narrowColor = (color: WColor): WVec4<GLclampf> =>
 	Array.isArray(color)
 		? [...color]
 		: [color.r, color.g, color.b, color.a]
 
-export const narrowDimension = (color: WDimension): WVec4 =>
-	Array.isArray(color)
-		? [...color]
-		: [color.x, color.y, color.width, color.height]
+export const narrowDimension = (color: WDimension):
+	WVec4<GLint, GLint, GLsizei, GLsizei> => Array.isArray(color)
+	? [...color]
+	: [color.x, color.y, color.width, color.height]
 
 /**
  * Simplifies {@link Vector2} creation.

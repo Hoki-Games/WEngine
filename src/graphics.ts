@@ -1,4 +1,5 @@
 import { narrowColor, narrowDimension, WColor, WDimension } from './math.js'
+import { WBasicObject } from './objects.js'
 
 export type WUniformType = Int32Array | Uint32Array | Float32Array
 
@@ -70,10 +71,10 @@ type WSettings = {
 export class WScene {
 	display: HTMLCanvasElement
 	gl: WebGL2RenderingContext
-	renderers: {
-		[key: string]: WRenderer
-	}
 	settings: WSettings
+	objects: {
+		[key: string]: WBasicObject
+	}
 
 	constructor({
 		canvas,
@@ -84,18 +85,11 @@ export class WScene {
 	}) {
 		this.display = canvas;
 		this.gl = canvas.getContext('webgl2');
-		this.renderers = {};
 		this.settings = settings
+		this.objects = {}
 	}
 
-	init(data: { [name: string]: {
-		uniforms?: {[name: string]: WUniformType},
-		attributes?: {[name: string]: WAttributeData},
-		textures?: {
-			img: TexImageSource
-			settings?: WTexSettings
-		}[]
-	}} = {}) {
+	init() {
 		this.gl.clearColor(...narrowColor(this.settings.backgroundColor))
 
 		this.settings.enable.forEach(v => this.gl.enable(v))
@@ -104,27 +98,40 @@ export class WScene {
 		
 		this.gl.viewport(...narrowDimension(this.settings.viewport))
 
-		for (const name in data) {
-			this.renderers[name].init(data[name])
+		for (const name in this.objects) {
+			this.objects[name].init()
 		}
 	}
 
-	draw(vertCounts: {[name: string]: GLsizei} = {}) {
+	draw() {
 		this.gl.clear(
 			WebGL2RenderingContext.COLOR_BUFFER_BIT |
 			WebGL2RenderingContext.DEPTH_BUFFER_BIT
 		);
 
-		for (const name in vertCounts) {
-			this.renderers[name].draw(vertCounts[name])
+		for (const name in this.objects) {
+			this.objects[name].draw()
 		}
 	}
 
-	addRenderer(name: string, shaders: WShader[]) {
-		return this.renderers[name] = new WRenderer({
-			scene: this,
-			shaders
-		})
+	addObject(name: string, value: WBasicObject): void
+	addObject(entries: [string, WBasicObject][]): void
+	addObject(entries: { [key: string]: WBasicObject }): void
+	addObject(
+		arg1: string 
+			| [string, WBasicObject][] 
+			| { [key: string]: WBasicObject },
+		arg2?: WBasicObject
+	) {
+		if (typeof arg1 == 'string') {
+			this.objects[arg1] = arg2;
+		} else if (Array.isArray(arg1)) {
+			arg1.forEach(([n, v]) => this.objects[n] = v)
+		} else {
+			for (const name in arg1) {
+				this.objects[name] = arg1[name]
+			}
+		}
 	}
 }
 
@@ -313,13 +320,17 @@ export class WRenderer {
 			this.#data.buffers[name] = this.scene.gl.createBuffer();
 		}
 		this.#data.attributes[name].data = value;
+		this.updateAttribute(name)
+	}
+	
+	updateAttribute(name: string) {
 		this.scene.gl.bindBuffer(
 			this.scene.gl.ARRAY_BUFFER,
 			this.#data.buffers[name]
 		)
 		this.scene.gl.bufferData(
 			this.scene.gl.ARRAY_BUFFER,
-			value,
+			this.getAttribute(name),
 			this.scene.gl.STATIC_DRAW
 		);
 	}

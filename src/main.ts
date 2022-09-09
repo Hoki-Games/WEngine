@@ -1,6 +1,12 @@
 import { WScene } from './graphics.js'
-import { WCustomObject, WOneColorObject, WTextureObject } from './objects.js'
+import {
+	WOneColorObject,
+	WTexPositionedObject,
+	WTextureObject
+} from './objects.js'
 import AssetsLoader from './loader.js';
+import { WPhysicsModel } from './physics.js';
+import { vec2 } from './math.js';
 
 const assetsLoader = new AssetsLoader({
 	shaders: {
@@ -42,7 +48,7 @@ window.addEventListener('load', async () => {
 		}
 	} = await assetsLoader.response
 
-	const obj = globalThis.obj = {
+	scene.addObject({
 		basic1: new WOneColorObject(scene, [1, .6, .6, 1], [[
 			[-1, 1, 0],
 			[-1, 0, 0],
@@ -78,9 +84,8 @@ window.addEventListener('load', async () => {
 			[0, 1 / 6],
 			[1, 1]
 		]]),
-		tex2: new WCustomObject({
+		tex2: new WTexPositionedObject({
 			scene,
-			vertsCount: 6,
 			shaders: [{
 				source: sh1,
 				type: 'VERTEX_SHADER'
@@ -88,42 +93,38 @@ window.addEventListener('load', async () => {
 				source: sh2,
 				type: 'FRAGMENT_SHADER'
 			}],
-			uniforms: {
-				'u_texture1': Int32Array.of(0),
-				'u_texture2': Int32Array.of(1)
-			},
+			tris: [
+				[
+					[0, .5, -.5],
+					[1, 0, -.5],
+					[0, -.5, -.5]
+				], [
+					[0, .5, -.5],
+					[-1, 0, -.5],
+					[0, -.5, -.5]
+				]
+			],
+			uvmap: [
+				[
+					[.5, 1],
+					[1.5, .5],
+					[.5, 0,]
+				], [
+					[.5, 1],
+					[-.5, .5],
+					[.5, 0]
+				]
+			],
 			attributes: {
-				'i_vertexPosition': {
-					data: Float32Array.from([
-						0, .5,
-						1, 0,
-						0, -.5,
-	
-						0, .5,
-						-1, 0,
-						0, -.5
-					]),
-					type: 'FLOAT',
-					length: 2
-				},
-				'i_uvmap': {
-					data: Float32Array.from([
-						.5, 1,
-						1.5, .5,
-						.5, 0,
-	
-						.5, 1,
-						-.5, .5,
-						.5, 0,
-					]),
-					type: 'FLOAT',
-					length: 2
-				},
 				'i_index': {
 					data: Int32Array.from([1, 1, 1, 0, 0, 0]),
 					type: 'INT',
 					length: 1
 				}
+			},
+			uniforms: {
+				'u_texture1': Int32Array.of(0),
+				'u_texture2': Int32Array.of(1)
 			},
 			textures: [{
 				img: img1,
@@ -147,35 +148,32 @@ window.addEventListener('load', async () => {
 				}
 			}]
 		})
-	}
+	})
+
+	const phys = globalThis.phys = new WPhysicsModel({
+		acceleration: vec2(0, -1)
+	});
 
 	scene.init()
-	obj.basic1.init()
-	obj.basic2.init()
-	obj.tex.init()
-	obj.tex2.init()
 
 	let lastTime = 0;
 
 	const draw = globalThis.draw = (time: number) => {
-		const dt = time - lastTime;
+		const dt = (time - lastTime) / 1000;
 		lastTime = time;
 
 		scene.draw()
-		obj.basic1.draw()
-		obj.basic2.draw()
-		obj.tex.draw()
-		obj.tex2.draw()
 
 		const move = time / 160 / 6
+		phys.updatePosition(dt)
 
-		obj.tex.setUVTriangle(0, [
-			[0, 1 - move],
-			[1, 1 - move],
-			[0, 1 / 6 - move]
+		;(<WTextureObject>scene.objects['tex']).setUVTriangle(0, [
+			[0, 1 + phys.position.y],
+			[1, 1 + phys.position.y],
+			[0, 1 / 6 + phys.position.y]
 		])
 
-		obj.tex.setUVTriangle(1, [
+		;(<WTextureObject>scene.objects['tex']).setUVTriangle(1, [
 			[1 + move, 1 / 6 + move],
 			[0 + move, 1 / 6 + move],
 			[1 + move, 1 + move]

@@ -15,7 +15,7 @@ import {
 	WVec4
 } from './math.js'
 
-interface WBasicObject {
+export interface WBasicObject {
 	renderer: WRenderer
 
 	init(): void
@@ -101,8 +101,8 @@ export class WCustomObject implements WBasicObject {
 	}
 }
 
-export abstract class WPositionedObject extends WCustomObject {
-	protected _tris: DataView
+export class WPositionedObject extends WCustomObject {
+	protected _tris: Float32Array
 
 	constructor({
 		scene,
@@ -131,7 +131,14 @@ export abstract class WPositionedObject extends WCustomObject {
 			vertsCount: 0
 		})
 
-		this._tris = new DataView(Float32Array.from(tris.flat(2)).buffer)
+		this._tris = Float32Array.from(tris.flat(2))
+
+		this.setAttribute(
+			'i_vertexPosition',
+			this._tris.buffer,
+			'FLOAT',
+			3
+		)
 		
 		this.updateTriangles()
 	}
@@ -149,9 +156,7 @@ export abstract class WPositionedObject extends WCustomObject {
 	setTriangle(id: number, triangle: WTri3<GLfloat>) {
 		if (id < 0 || id >= this._vertsCount / 3) return false
 
-		triangle.flat(2).forEach((v, i) => {
-			this._tris.setFloat32(36 * id + 4 * i, v, true)
-		})
+		this._tris.set(triangle.flat(2), id * 9)
 
 		this.updateTriangles()
 		return true
@@ -162,7 +167,7 @@ export abstract class WPositionedObject extends WCustomObject {
 		arr.set(new Float32Array(this._tris.buffer))
 		arr.set(Float32Array.from(triangle.flat(2)), this._vertsCount * 3)
 
-		this._tris = new DataView(arr.buffer)
+		this._tris = arr
 
 		this.updateTriangles()
 		return this._vertsCount / 3 - 1
@@ -179,7 +184,7 @@ export abstract class WPositionedObject extends WCustomObject {
 			(this._vertsCount / 3 - 1 - id) * 9
 		), id * 9)
 
-		this._tris = new DataView(arr.buffer)
+		this._tris = arr
 
 		this.updateTriangles()
 		return true
@@ -188,17 +193,12 @@ export abstract class WPositionedObject extends WCustomObject {
 	updateTriangles() {
 		this._vertsCount = this._tris.byteLength / 12
 
-		this.setAttribute(
-			'i_vertexPosition',
-			this._tris.buffer,
-			'FLOAT',
-			3
-		)
+		this.renderer.updateAttribute('i_vertexPosition')
 	}
 }
 
 export class WOneColorObject extends WPositionedObject {
-	color: DataView
+	color: Float32Array
 	
 	constructor(scene: WScene, color: WColor, tris: WTri3<GLfloat>[]) {
 		const clr = Float32Array.from(narrowColor(color))
@@ -234,12 +234,12 @@ export class WOneColorObject extends WPositionedObject {
 			tris
 		})
 
-		this.color = new DataView(clr.buffer)
+		this.color = clr
 	}
 }
 
-export abstract class WTexPositionedObject extends WPositionedObject {
-	protected _uvmap: DataView
+export class WTexPositionedObject extends WPositionedObject {
+	protected _uvmap: Float32Array
 
 	constructor({
 		scene,
@@ -270,7 +270,14 @@ export abstract class WTexPositionedObject extends WPositionedObject {
 			tris
 		})
 
-		this._uvmap = new DataView(Float32Array.from(uvmap.flat(2)).buffer)
+		this._uvmap = Float32Array.from(uvmap.flat(2))
+
+		this.setAttribute(
+			'i_uvmap',
+			this._uvmap.buffer,
+			'FLOAT',
+			2
+		)
 		
 		this.updateUVTriangles()
 	}
@@ -288,9 +295,7 @@ export abstract class WTexPositionedObject extends WPositionedObject {
 	setUVTriangle(id: number, triangle: WTri2<GLfloat>) {
 		if (id < 0 || id >= this._uvmap.byteLength / 24) return false
 
-		triangle.flat(2).forEach((v, i) => {
-			this._uvmap.setFloat32(24 * id + 4 * i, v, true)
-		})
+		this._uvmap.set(triangle.flat(2), id * 6)
 
 		this.updateUVTriangles()
 		return true
@@ -301,7 +306,7 @@ export abstract class WTexPositionedObject extends WPositionedObject {
 		arr.set(new Float32Array(this._uvmap.buffer))
 		arr.set(Float32Array.from(triangle.flat(2)), this._uvmap.byteLength / 4)
 
-		this._uvmap = new DataView(arr.buffer)
+		this._uvmap = arr
 
 		this.updateUVTriangles()
 		return this._uvmap.byteLength / 24 - 1
@@ -318,19 +323,14 @@ export abstract class WTexPositionedObject extends WPositionedObject {
 			(this._uvmap.byteLength / 24 - 1 - id) * 6
 		), id * 6)
 
-		this._uvmap = new DataView(arr.buffer)
+		this._uvmap = arr
 
 		this.updateUVTriangles()
 		return true
 	}
 
 	updateUVTriangles() {
-		this.setAttribute(
-			'i_uvmap',
-			this._uvmap.buffer,
-			'FLOAT',
-			2
-		)
+		this.renderer.updateAttribute('i_uvmap')
 	}
 }
 

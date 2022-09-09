@@ -54,6 +54,13 @@ export class Vector2 {
 		this.y = y
 	}
 
+	add(...v: Vector2[]) {
+		v.forEach(v => {
+			this.x += v.x;
+			this.y += v.y;
+		})
+	}
+
 	/**
 	 * Calculates the sum of all given vectors and this.
 	 * 

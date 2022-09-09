@@ -42,135 +42,118 @@ window.addEventListener('load', async () => {
 		}
 	} = await assetsLoader.response
 
-	globalThis.img = img1
-
-	const basic1 = new WOneColorObject(scene, [1, .6, .6, 1], [[
-		[-1, 1, 0],
-		[-1, 0, 0],
-		[1, 1, 0]
-	], [
-		[-1, -1, .5],
-		[-1, 0, .5],
-		[1, -1, .5]
-	]])
+	const obj = globalThis.obj = {
+		basic1: new WOneColorObject(scene, [1, .6, .6, 1], [[
+			[-1, 1, 0],
+			[-1, 0, 0],
+			[1, 1, 0]
+		], [
+			[-1, -1, .5],
+			[-1, 0, .5],
+			[1, -1, .5]
+		]]),
+		basic2: new WOneColorObject(scene, [0, .8, 1, 1], [[
+			[-1, 1, .5],
+			[1, 1, .5],
+			[1, 0, .5]
+		], [
+			[-1, -1, 0],
+			[1, -1, 0],
+			[1, 0, 0]
+		]]),
+		tex: new WTextureObject(img3, scene, [[
+			[-.9, .9, -.5],
+			[.5764, .9, -.5],
+			[-.9, .1618, -.5]
+		], [
+			[.9, -.9, -.5],
+			[-.5764, -.9, -.5],
+			[.9, -.1618, -.5]
+		]], [[
+			[0, 1],
+			[1, 1],
+			[0, 1 / 6]
+		], [
+			[1, 1 / 6],
+			[0, 1 / 6],
+			[1, 1]
+		]]),
+		tex2: new WCustomObject({
+			scene,
+			vertsCount: 6,
+			shaders: [{
+				source: sh1,
+				type: 'VERTEX_SHADER'
+			}, {
+				source: sh2,
+				type: 'FRAGMENT_SHADER'
+			}],
+			uniforms: {
+				'u_texture1': Int32Array.of(0),
+				'u_texture2': Int32Array.of(1)
+			},
+			attributes: {
+				'i_vertexPosition': {
+					data: Float32Array.from([
+						0, .5,
+						1, 0,
+						0, -.5,
 	
-	const basic2 = new WOneColorObject(scene, [0, .8, 1, 1], [[
-		[-1, 1, .5],
-		[1, 1, .5],
-		[1, 0, .5]
-	], [
-		[-1, -1, 0],
-		[1, -1, 0],
-		[1, 0, 0]
-	]])
-
-	const tex = globalThis.tex = new WTextureObject(img3, scene, [[
-		[-.9, .9, -.5],
-		[.5764, .9, -.5],
-		[-.9, .1618, -.5]
-	], [
-		[.9, -.9, -.5],
-		[-.5764, -.9, -.5],
-		[.9, -.1618, -.5]
-	]], [[
-		[0, 1],
-		[1, 1],
-		[0, 1 / 6]
-	], [
-		[1, 1 / 6],
-		[0, 1 / 6],
-		[1, 1]
-	]])
-
-	const tex2 = globalThis.tex2 = new WCustomObject({
-		scene,
-		trisCount: 2,
-		shaders: [{
-			source: sh1,
-			type: WebGL2RenderingContext.VERTEX_SHADER
-		}, {
-			source: sh2,
-			type: WebGL2RenderingContext.FRAGMENT_SHADER
-		}],
-		uniforms: {
-			'u_texture1': {
-				data: [0],
-				type: WebGL2RenderingContext.INT
-			},
-			'u_texture2': {
-				data: [1],
-				type: WebGL2RenderingContext.INT
-			}
-		},
-		attributes: {
-			'i_vertexPosition': {
-				data: new Float32Array([
-					0, .5,
-					1, 0,
-					0, -.5,
-
-					0, .5,
-					-1, 0,
-					0, -.5
-				]),
-				type: WebGL2RenderingContext.FLOAT,
-				length: 2
-			},
-			'i_uvmap': {
-				data: new Float32Array([
-					.5, 1,
-					1.5, .5,
-					.5, 0,
-
-					.5, 1,
-					-.5, .5,
-					.5, 0,
-				]),
-				type: WebGL2RenderingContext.FLOAT,
-				length: 2
-			},
-			'i_index': {
-				data: new Int32Array([
-					1,
-					1,
-					1,
-
-					0,
-					0,
-					0
-				]),
-				type: WebGL2RenderingContext.INT,
-				length: 1
-			}
-		},
-		textures: [{
-			img: img1,
-			settings: {
-				params: {
-					TEXTURE_MIN_FILTER: WebGL2RenderingContext.LINEAR,
-					TEXTURE_WRAP_S: WebGL2RenderingContext.CLAMP_TO_EDGE,
-					TEXTURE_WRAP_T: WebGL2RenderingContext.CLAMP_TO_EDGE,
-					UNPACK_FLIP_Y_WEBGL: true
+						0, .5,
+						-1, 0,
+						0, -.5
+					]),
+					type: 'FLOAT',
+					length: 2
+				},
+				'i_uvmap': {
+					data: Float32Array.from([
+						.5, 1,
+						1.5, .5,
+						.5, 0,
+	
+						.5, 1,
+						-.5, .5,
+						.5, 0,
+					]),
+					type: 'FLOAT',
+					length: 2
+				},
+				'i_index': {
+					data: Int32Array.from([1, 1, 1, 0, 0, 0]),
+					type: 'INT',
+					length: 1
 				}
-			}
-		}, {
-			img: img2,
-			settings: {
-				params: {
-					TEXTURE_MIN_FILTER: WebGL2RenderingContext.LINEAR,
-					TEXTURE_WRAP_S: WebGL2RenderingContext.CLAMP_TO_EDGE,
-					TEXTURE_WRAP_T: WebGL2RenderingContext.CLAMP_TO_EDGE,
-					UNPACK_FLIP_Y_WEBGL: true
+			},
+			textures: [{
+				img: img1,
+				settings: {
+					params: {
+						TEXTURE_MIN_FILTER: WebGL2RenderingContext.LINEAR,
+						TEXTURE_WRAP_S: WebGL2RenderingContext.CLAMP_TO_EDGE,
+						TEXTURE_WRAP_T: WebGL2RenderingContext.CLAMP_TO_EDGE,
+						UNPACK_FLIP_Y_WEBGL: true
+					}
 				}
-			}
-		}]
-	})
+			}, {
+				img: img2,
+				settings: {
+					params: {
+						TEXTURE_MIN_FILTER: WebGL2RenderingContext.LINEAR,
+						TEXTURE_WRAP_S: WebGL2RenderingContext.CLAMP_TO_EDGE,
+						TEXTURE_WRAP_T: WebGL2RenderingContext.CLAMP_TO_EDGE,
+						UNPACK_FLIP_Y_WEBGL: true
+					}
+				}
+			}]
+		})
+	}
 
 	scene.init()
-	basic1.init()
-	basic2.init()
-	tex.init()
-	tex2.init()
+	obj.basic1.init()
+	obj.basic2.init()
+	obj.tex.init()
+	obj.tex2.init()
 
 	let lastTime = 0;
 
@@ -179,20 +162,20 @@ window.addEventListener('load', async () => {
 		lastTime = time;
 
 		scene.draw()
-		basic1.draw()
-		basic2.draw()
-		tex.draw()
-		tex2.draw()
+		obj.basic1.draw()
+		obj.basic2.draw()
+		obj.tex.draw()
+		obj.tex2.draw()
 
 		const move = time / 160 / 6
 
-		tex.setUVTriangle(0, [
+		obj.tex.setUVTriangle(0, [
 			[0, 1 - move],
 			[1, 1 - move],
 			[0, 1 / 6 - move]
 		])
 
-		tex.setUVTriangle(1, [
+		obj.tex.setUVTriangle(1, [
 			[1 + move, 1 / 6 + move],
 			[0 + move, 1 / 6 + move],
 			[1 + move, 1 + move]

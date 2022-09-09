@@ -2,26 +2,26 @@ import { WRenderer } from './graphics.js';
 import { narrowColor } from './math.js';
 export class WCustomObject {
     renderer;
-    trisCount;
-    attributes;
-    uniforms;
-    textures;
-    constructor({ scene, uniforms = {}, attributes = {}, textures = [], shaders, trisCount }) {
-        this.attributes = attributes;
-        this.uniforms = uniforms;
-        this.textures = textures;
-        this.trisCount = trisCount;
+    _vertsCount;
+    _attributes;
+    _uniforms;
+    _textures;
+    constructor({ scene, uniforms = {}, attributes = {}, textures = [], shaders, vertsCount }) {
+        this._attributes = attributes;
+        this._uniforms = uniforms;
+        this._textures = textures;
+        this._vertsCount = vertsCount;
         this.renderer = new WRenderer({ scene, shaders });
     }
     init() {
         this.renderer.init({
-            uniforms: this.uniforms,
-            attributes: this.attributes,
-            textures: this.textures
+            uniforms: this._uniforms,
+            attributes: this._attributes,
+            textures: this._textures
         });
     }
     draw() {
-        this.renderer.draw(this.trisCount * 3);
+        this.renderer.draw(this._vertsCount);
     }
     getAttribute(name) {
         return this.renderer.getAttribute(name);
@@ -32,8 +32,8 @@ export class WCustomObject {
     getUniform(name) {
         return this.renderer.getUniform(name);
     }
-    setUniform(name, value, type) {
-        this.renderer.setUniform(name, value, type);
+    setUniform(name, value) {
+        this.renderer.setUniform(name, value);
     }
     getTexture(id) {
         return this.renderer.getTexture(id);
@@ -42,39 +42,64 @@ export class WCustomObject {
         this.renderer.setTexture({ id, img, settings });
     }
 }
-class WPositionedObject extends WCustomObject {
-    tris = [];
+export class WPositionedObject extends WCustomObject {
+    _tris;
+    constructor({ scene, uniforms = {}, attributes = {}, textures = [], shaders, tris }) {
+        super({
+            scene,
+            uniforms,
+            attributes,
+            textures,
+            shaders,
+            vertsCount: 0
+        });
+        this._tris = new DataView(Float32Array.from(tris.flat(2)).buffer);
+        this.updateTriangles();
+    }
     getTriangle(id) {
-        return this.tris[id];
+        const arr = new Float32Array(this._tris.buffer, 36 * id, 9);
+        return [
+            [arr[0], arr[1], arr[2]],
+            [arr[3], arr[4], arr[5]],
+            [arr[6], arr[7], arr[8]]
+        ];
     }
     setTriangle(id, triangle) {
-        if (id < 0)
+        if (id < 0 || id >= this._vertsCount / 3)
             return false;
-        this.tris[id] = triangle;
+        triangle.flat(2).forEach((v, i) => {
+            this._tris.setFloat32(36 * id + 4 * i, v, true);
+        });
         this.updateTriangles();
         return true;
     }
     addTriangle(triangle) {
-        const id = this.tris.push(triangle) - 1;
+        const arr = new Float32Array((this._vertsCount / 3 + 1) * 9);
+        arr.set(new Float32Array(this._tris.buffer));
+        arr.set(Float32Array.from(triangle.flat(2)), this._vertsCount * 3);
+        this._tris = new DataView(arr.buffer);
         this.updateTriangles();
-        return id;
+        return this._vertsCount / 3 - 1;
     }
     removeTriangle(id) {
-        if (!(id in this.tris))
+        if (id < 0 || id >= this._vertsCount / 3)
             return false;
-        this.tris[id] = [];
+        const arr = new Float32Array((this._vertsCount / 3 - 1) * 9);
+        arr.set(new Float32Array(this._tris.buffer, 0, id * 9));
+        arr.set(new Float32Array(this._tris.buffer, (id + 1) * 36, (this._vertsCount / 3 - 1 - id) * 9), id * 9);
+        this._tris = new DataView(arr.buffer);
         this.updateTriangles();
         return true;
     }
     updateTriangles() {
-        this.trisCount = this.tris.filter(v => v.length).length;
-        this.setAttribute('i_vertexPosition', new Float32Array(this.tris.flat(2)), WebGL2RenderingContext.FLOAT, 3);
+        this._vertsCount = this._tris.byteLength / 12;
+        this.setAttribute('i_vertexPosition', this._tris.buffer, 'FLOAT', 3);
     }
 }
 export class WOneColorObject extends WPositionedObject {
     color;
     constructor(scene, color, tris) {
-        const clr = narrowColor(color);
+        const clr = Float32Array.from(narrowColor(color));
         super({
             scene,
             shaders: [{
@@ -86,7 +111,7 @@ export class WOneColorObject extends WPositionedObject {
 				void main() {
 					gl_Position = vec4(i_vertexPosition, 1.0);
 				}`,
-                    type: WebGL2RenderingContext.VERTEX_SHADER
+                    type: 'VERTEX_SHADER'
                 }, {
                     source: `#version 300 es
 				precision mediump float;
@@ -98,53 +123,67 @@ export class WOneColorObject extends WPositionedObject {
 				void main() {
 					o_fragColor = u_color;
 				}`,
-                    type: WebGL2RenderingContext.FRAGMENT_SHADER
+                    type: 'FRAGMENT_SHADER'
                 }],
             uniforms: {
-                'u_color': {
-                    data: clr,
-                    type: WebGL2RenderingContext.FLOAT
-                }
+                'u_color': clr
             },
-            attributes: {
-                'i_vertexPosition': {
-                    data: new Float32Array(tris.flat(2)),
-                    type: WebGL2RenderingContext.FLOAT,
-                    length: 3
-                }
-            },
-            trisCount: tris.length
+            tris
         });
-        this.tris = tris;
-        this.color = clr;
+        this.color = new DataView(clr.buffer);
     }
 }
-class WTexPositionedObject extends WPositionedObject {
-    uvmap = [];
+export class WTexPositionedObject extends WPositionedObject {
+    _uvmap;
+    constructor({ scene, uniforms = {}, attributes = {}, textures = [], shaders, tris, uvmap }) {
+        super({
+            scene,
+            uniforms,
+            attributes,
+            textures,
+            shaders,
+            tris
+        });
+        this._uvmap = new DataView(Float32Array.from(uvmap.flat(2)).buffer);
+        this.updateUVTriangles();
+    }
     getUVTriangle(id) {
-        return this.uvmap[id];
+        const arr = new Float32Array(this._uvmap.buffer, 24 * id, 6);
+        return [
+            [arr[0], arr[1]],
+            [arr[2], arr[3]],
+            [arr[4], arr[5]]
+        ];
     }
     setUVTriangle(id, triangle) {
-        if (id < 0)
+        if (id < 0 || id >= this._uvmap.byteLength / 24)
             return false;
-        this.uvmap[id] = triangle;
+        triangle.flat(2).forEach((v, i) => {
+            this._uvmap.setFloat32(24 * id + 4 * i, v, true);
+        });
         this.updateUVTriangles();
         return true;
     }
     addUVTriangle(triangle) {
-        const id = this.uvmap.push(triangle) - 1;
+        const arr = new Float32Array((this._uvmap.byteLength / 24 + 1) * 6);
+        arr.set(new Float32Array(this._uvmap.buffer));
+        arr.set(Float32Array.from(triangle.flat(2)), this._uvmap.byteLength / 4);
+        this._uvmap = new DataView(arr.buffer);
         this.updateUVTriangles();
-        return id;
+        return this._uvmap.byteLength / 24 - 1;
     }
     removeUVTriangle(id) {
-        if (!(id in this.uvmap))
+        if (id < 0 || id >= this._uvmap.byteLength / 24)
             return false;
-        this.uvmap[id] = [];
+        const arr = new Float32Array((this._uvmap.byteLength / 24 - 1) * 6);
+        arr.set(new Float32Array(this._uvmap.buffer, 0, id * 6));
+        arr.set(new Float32Array(this._uvmap.buffer, (id + 1) * 24, (this._uvmap.byteLength / 24 - 1 - id) * 6), id * 6);
+        this._uvmap = new DataView(arr.buffer);
         this.updateUVTriangles();
         return true;
     }
     updateUVTriangles() {
-        this.setAttribute('i_uvmap', new Float32Array(this.uvmap.flat(2)), WebGL2RenderingContext.FLOAT, 2);
+        this.setAttribute('i_uvmap', this._uvmap.buffer, 'FLOAT', 2);
     }
 }
 export class WTextureObject extends WTexPositionedObject {
@@ -165,7 +204,7 @@ export class WTextureObject extends WTexPositionedObject {
 					v_uvmap = i_uvmap;
 					gl_Position = vec4(i_vertexPosition, 1);
 				}`,
-                    type: WebGL2RenderingContext.VERTEX_SHADER
+                    type: 'VERTEX_SHADER'
                 }, {
                     source: `#version 300 es
 				precision mediump float;
@@ -179,25 +218,10 @@ export class WTextureObject extends WTexPositionedObject {
 				void main() {
 					o_fragColor = texture(u_texture, v_uvmap);
 				}`,
-                    type: WebGL2RenderingContext.FRAGMENT_SHADER
+                    type: 'FRAGMENT_SHADER'
                 }],
             uniforms: {
-                'u_texture': {
-                    data: [0],
-                    type: WebGL2RenderingContext.INT
-                }
-            },
-            attributes: {
-                'i_vertexPosition': {
-                    data: new Float32Array(tris.flat(2)),
-                    type: WebGL2RenderingContext.FLOAT,
-                    length: 3
-                },
-                'i_uvmap': {
-                    data: new Float32Array(uvmap.flat(2)),
-                    type: WebGL2RenderingContext.FLOAT,
-                    length: 2
-                }
+                'u_texture': Int32Array.of(0)
             },
             textures: [{
                     img: img,
@@ -212,10 +236,9 @@ export class WTextureObject extends WTexPositionedObject {
                         }
                     }
                 }],
-            trisCount: tris.length
+            tris,
+            uvmap
         });
         this.img = img;
-        this.tris = tris;
-        this.uvmap = uvmap;
     }
 }

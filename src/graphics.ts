@@ -1,17 +1,18 @@
 import { narrowColor, narrowDimension, WColor, WDimension } from './math.js'
 
-export interface WUniformData {
-	data: Iterable<number>
-	type: keyof typeof typeMap
-}
+export type WUniformType = Int32Array | Uint32Array | Float32Array
 
-interface WUniform extends WUniformData {
+interface WUniform {
 	location: WebGLUniformLocation
+	data: WUniformType
+	type: 'i' | 'ui' | 'f'
 }
 
+type WAttributeType = 'BYTE' | 'SHORT' | 'UNSIGNED_BYTE'
+	| 'UNSIGNED_SHORT' | 'FLOAT' | 'HALF_FLOAT' | 'INT'
 export interface WAttributeData {
-	data: BufferSource
-	type: GLenum
+	data: ArrayBuffer
+	type: WAttributeType
 	length: GLint
 }
 
@@ -56,7 +57,7 @@ type WGLData = {
 
 export type WShader = {
 	source: string
-	type: GLenum
+	type: 'VERTEX_SHADER' | 'FRAGMENT_SHADER'
 }
 
 type WSettings = {
@@ -88,7 +89,7 @@ export class WScene {
 	}
 
 	init(data: { [name: string]: {
-		uniforms?: {[name: string]: WUniformData},
+		uniforms?: {[name: string]: WUniformType},
 		attributes?: {[name: string]: WAttributeData},
 		textures?: {
 			img: TexImageSource
@@ -127,12 +128,6 @@ export class WScene {
 	}
 }
 
-
-const typeMap = {
-	[WebGL2RenderingContext.INT]: 'i',
-	[WebGL2RenderingContext.UNSIGNED_INT]: 'ui',
-	[WebGL2RenderingContext.FLOAT]: 'f'
-} as const
 
 const texParamMap = {
 	PACK_ALIGNMENT: 'pixelStoreI',
@@ -189,7 +184,7 @@ export class WRenderer {
 		this.program = gl.createProgram();
 
 		this.shaders = shaders.map(s => {
-			const shader = gl.createShader(s.type);
+			const shader = gl.createShader(WebGL2RenderingContext[s.type]);
 			
 			gl.shaderSource(shader, s.source);
 
@@ -208,7 +203,7 @@ export class WRenderer {
 		attributes = {},
 		textures = []
 	}: {
-		uniforms?: {[name: string]: WUniformData}
+		uniforms?: {[name: string]: WUniformType}
 		attributes?: {[name: string]: WAttributeData}
 		textures?: {
 			img: TexImageSource
@@ -216,15 +211,16 @@ export class WRenderer {
 		}[]
 	}) {
 		for (const name in uniforms) {
-			this.setUniform(name, uniforms[name].data, uniforms[name].type);
+			this.setUniform(name, uniforms[name]);
 		}
 
 		for (const name in attributes) {
+			const attr = attributes[name]
 			this.setAttribute(
 				name,
-				attributes[name].data,
-				attributes[name].type,
-				attributes[name].length
+				attr.data,
+				attr.type,
+				attr.length
 			);
 		}
 
@@ -246,45 +242,45 @@ export class WRenderer {
 		})
 
 		for (const name in this.#data.uniforms) {
-			const val = [...this.#data.uniforms[name].data];
+			const val = this.#data.uniforms[name]
+			const length = <1 | 2 | 3 | 4>val.data.length
+			const type = this.#data.uniforms[name].type
+			const func = `uniform${length}${type}v` as const
 
-			if (val.length > 4 || val.length < 1)
-				throw new Error('Array length must be in bounds [1,4]');
-
-			const type = this.#data.uniforms[name].type;
-			this.scene.gl[`uniform${val.length}${typeMap[type]}v`](
+			this.scene.gl[func](
 				this.#data.uniforms[name].location,
 				this.#data.uniforms[name].data
 			)
 		}
 
 		for (const name in this.#data.attributes) {
+			const attr = this.#data.attributes[name]
 			this.scene.gl.bindBuffer(
 				this.scene.gl.ARRAY_BUFFER,
 				this.#data.buffers[name]
 			);
 			if (
-				this.#data.attributes[name].type == WebGL2RenderingContext.INT
+				attr.type == 'INT'
 			) {
 				this.scene.gl.vertexAttribIPointer(
-					this.#data.attributes[name].location,
-					this.#data.attributes[name].length,
-					this.#data.attributes[name].type,
+					attr.location,
+					attr.length,
+					WebGL2RenderingContext.INT,
 					0,
 					0
 				);
 			} else {
 				this.scene.gl.vertexAttribPointer(
-					this.#data.attributes[name].location,
-					this.#data.attributes[name].length,
-					this.#data.attributes[name].type,
+					attr.location,
+					attr.length,
+					WebGL2RenderingContext[attr.type],
 					false,
 					0,
 					0
 				);
 			}
 			this.scene.gl.enableVertexAttribArray(
-				this.#data.attributes[name].location
+				attr.location
 			);
 		}
 
@@ -298,11 +294,10 @@ export class WRenderer {
 	getAttribute(name: string) {
 		return this.#data.attributes[name].data;
 	}
-
 	setAttribute(
-		name: string, 
-		value: BufferSource, 
-		type: GLenum, 
+		name: string,
+		value: ArrayBuffer,
+		type: WAttributeType,
 		length: GLint
 	) {
 		if (!(name in this.#data.attributes)) {
@@ -332,13 +327,17 @@ export class WRenderer {
 	getUniform(name: string) {
 		return this.#data.uniforms[name].data;
 	}
+	setUniform(name: string, value: Int32Array | Uint32Array | Float32Array) {
+		const type = (() => {switch (value.constructor) {
+		case Int32Array: return 'i'
+		case Uint32Array: return 'ui'
+		case Float32Array: return 'f'
+		default: throw new Error('Invalid data type')
+		}})()
 
-	setUniform(name: string, value: Iterable<number>, type: GLenum) {
-		if (!(
-			type == WebGL2RenderingContext.INT ||
-			type == WebGL2RenderingContext.UNSIGNED_INT ||
-			type == WebGL2RenderingContext.FLOAT
-		)) throw new Error(`Invalid type [${type}]`);
+		if (value.length < 1 || value.length > 4)
+			throw new Error('Array length must be in bounds [1, 4]');
+
 		if (!(name in this.#data.uniforms)) {
 			this.#data.uniforms[name] = {
 				location: this.scene.gl.getUniformLocation(
@@ -355,7 +354,6 @@ export class WRenderer {
 	getTexture(id: number) {
 		return this.#data.textures[id].data;
 	}
-
 	setTexture({
 		id,
 		img,
@@ -376,7 +374,7 @@ export class WRenderer {
 		const type = settings.type ?? WebGL2RenderingContext.UNSIGNED_BYTE;
 		type Param = {
 			name: GLenum
-			value: GLint | GLfloat | GLenum | GLboolean
+			value: number | boolean
 		}
 		const params = {
 			pixelStoreI: <Param[]>[],

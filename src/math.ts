@@ -195,3 +195,149 @@ export class Vector2 {
 		return vec2(length * Math.cos(degree), length * Math.sin(degree))
 	}
 }
+
+export class WMatrix3 {
+	protected _data: WTri3<number>
+
+	constructor(data?: WTri3<number>) {
+		this._data = data ?? [
+			[0, 0, 0],
+			[0, 0, 0],
+			[0, 0, 0]
+		]
+	}
+
+	get(): WTri3<number>
+	get(col: number): WVec3<number>
+	get(col: number, row: number): number
+	get(col?: number, row?: number) {
+		if (typeof row == 'number') {
+			return this._data[col][row]
+		} else if (typeof col == 'number') {
+			return [...this._data[col]]
+		} else {
+			const [a, b, c] = this._data
+			return [[...a], [...b], [...c]]
+		}
+	}
+
+	set(value: WTri3<number>): void
+	set(col: number, value: WVec3<number>): void
+	set(col: number, row: number, value: number): void
+	set(
+		col: number | WTri3<number>,
+		row?: number | WVec3<number>,
+		value?: number
+	) {
+		if (typeof value == 'number') {
+			this._data[<number>col][<number>row] = value
+		} else if (Array.isArray(row)) {
+			this._data[<number>col] = row
+		} else if (Array.isArray(col)) {
+			this._data = col
+		} else throw new Error('Invalid data')
+	}
+
+	copy() {
+		return new WMatrix3(this.get())
+	}
+
+	sum(...mat: WMatrix3[]) {
+		const ret = []
+
+		this._data.forEach((_, col) => {
+			ret.push([])
+			this._data[col].forEach((v1, row) => { 
+				ret[col].push(mat.reduce((t, v) => t + v[col][row], v1))
+			})
+		})
+		
+		return new WMatrix3(<WTri3<number>>ret)
+	}
+
+	mult(mat: WMatrix3) {
+		const a = this.get()
+		const b = mat.get()
+
+		// TODO: Turn to loop calc
+
+		const r00 = a[0][0] * b[0][0] + a[1][0] * b[0][1] + a[2][0] * b[0][2]
+		const r10 = a[0][0] * b[1][0] + a[1][0] * b[1][1] + a[2][0] * b[1][2]
+		const r20 = a[0][0] * b[2][0] + a[1][0] * b[2][1] + a[2][0] * b[2][2]
+
+		const r01 = a[0][1] * b[0][0] + a[1][1] * b[0][1] + a[2][1] * b[0][2]
+		const r11 = a[0][1] * b[1][0] + a[1][1] * b[1][1] + a[2][1] * b[1][2]
+		const r21 = a[0][1] * b[2][0] + a[1][1] * b[2][1] + a[2][1] * b[2][2]
+
+		const r02 = a[0][2] * b[0][0] + a[1][2] * b[0][1] + a[2][2] * b[0][2]
+		const r12 = a[0][2] * b[1][0] + a[1][2] * b[1][1] + a[2][2] * b[1][2]
+		const r22 = a[0][2] * b[2][0] + a[1][2] * b[2][1] + a[2][2] * b[2][2]
+		
+		return new WMatrix3([
+			[r00, r01, r02],
+			[r10, r11, r12],
+			[r20, r21, r22]
+		])
+	}
+
+	transpose() {
+		const m = this.get()
+
+		this.set([
+			[m[0][0], m[1][0], m[2][0]],
+			[m[0][1], m[1][1], m[2][1]],
+			[m[0][2], m[1][2], m[2][2]]
+		])
+	}
+}
+
+export class WTransformMatrix3 {
+	translate: WMatrix3
+	rotate: WMatrix3
+	scale: WMatrix3
+	origin: Vector2
+
+	constructor({
+		translate = vec2(0),
+		rotate = 0,
+		scale = vec2(1),
+		origin = vec2(0)
+	}: {
+		translate?: Vector2,
+		rotate?: number,
+		scale?: Vector2,
+		origin?: Vector2
+	}) {
+		this.translate = new WMatrix3([
+			[1, 0, 0],
+			[0, 1, 0],
+			[translate.x, translate.y, 1]
+		])
+		// TODO
+		const cos = Math.cos(rotate)
+		const sin = Math.sin(rotate)
+		this.rotate = new WMatrix3([
+			[cos, -sin, 0],
+			[sin, cos, 0],
+			[0, 0, 1]
+		])
+		this.scale = new WMatrix3([
+			[scale.x, 0, 0],
+			[0, scale.y, 0],
+			[0, 0, 1]
+		])
+		this.origin = origin
+	}
+
+	apply(v: Vector2) {
+		v.add(this.origin.neg)
+
+		const trans = this.scale.mult(this.rotate).mult(this.translate).get()
+		const x = trans[0][0] * v.x + trans[1][0] * v.y + trans[2][0]
+		const y = trans[0][1] * v.x + trans[1][1] * v.y + trans[2][1]
+		v.x = x
+		v.y = y
+
+		v.add(this.origin)
+	}
+}

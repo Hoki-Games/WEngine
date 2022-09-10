@@ -187,3 +187,8 @@ window.addEventListener('load', async () => {
 
 	requestAnimationFrame(draw)
 })
+// Plans:
+// Create matrix classes // TODO
+// Expand objects to physics rules
+// Implement physic bonds system
+// Test with "The Lantern"

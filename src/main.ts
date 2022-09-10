@@ -130,7 +130,7 @@ window.addEventListener('load', async () => {
 				img: img1,
 				settings: {
 					params: {
-						TEXTURE_MIN_FILTER: WebGL2RenderingContext.LINEAR,
+						TEXTURE_MIN_FILTER: WebGL2RenderingContext.NEAREST,
 						TEXTURE_WRAP_S: WebGL2RenderingContext.CLAMP_TO_EDGE,
 						TEXTURE_WRAP_T: WebGL2RenderingContext.CLAMP_TO_EDGE,
 						UNPACK_FLIP_Y_WEBGL: true
@@ -140,7 +140,7 @@ window.addEventListener('load', async () => {
 				img: img2,
 				settings: {
 					params: {
-						TEXTURE_MIN_FILTER: WebGL2RenderingContext.LINEAR,
+						TEXTURE_MIN_FILTER: WebGL2RenderingContext.NEAREST,
 						TEXTURE_WRAP_S: WebGL2RenderingContext.CLAMP_TO_EDGE,
 						TEXTURE_WRAP_T: WebGL2RenderingContext.CLAMP_TO_EDGE,
 						UNPACK_FLIP_Y_WEBGL: true
@@ -151,12 +151,15 @@ window.addEventListener('load', async () => {
 	})
 
 	const phys = globalThis.phys = new WPhysicsModel({
-		acceleration: vec2(0, -1)
+		velocity: vec2(0, -1)
+	});
+	const phys2 = globalThis.phys2 = new WPhysicsModel({
+		velocity: vec2(2 ** (1 / 2) / 2)
 	});
 
 	scene.init()
 
-	let lastTime = 0;
+	let lastTime = performance.now()
 
 	const draw = globalThis.draw = (time: number) => {
 		const dt = (time - lastTime) / 1000;
@@ -164,8 +167,8 @@ window.addEventListener('load', async () => {
 
 		scene.draw()
 
-		const move = time / 160 / 6
 		phys.updatePosition(dt)
+		phys2.updatePosition(dt)
 
 		;(<WTextureObject>scene.objects['tex']).setUVTriangle(0, [
 			[0, 1 + phys.position.y],
@@ -174,9 +177,9 @@ window.addEventListener('load', async () => {
 		])
 
 		;(<WTextureObject>scene.objects['tex']).setUVTriangle(1, [
-			[1 + move, 1 / 6 + move],
-			[0 + move, 1 / 6 + move],
-			[1 + move, 1 + move]
+			[1 + phys2.position.x, 1 / 6 + phys2.position.x],
+			[0 + phys2.position.x, 1 / 6 + phys2.position.x],
+			[1 + phys2.position.x, 1 + phys2.position.x]
 		])
 
 		requestAnimationFrame(draw)

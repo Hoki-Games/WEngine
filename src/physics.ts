@@ -1,14 +1,15 @@
 import { vec2, Vector2 } from './math.js'
 
 export class WPhysicsModel {
-	position: Vector2
-	rotation: number
-	scale: Vector2
+	// Meter here is relative, so consider as unit
+	position: Vector2 // m
+	rotation: number // rad
+	scale: Vector2 // m
 
-	velocity: Vector2
-	acceleration: Vector2
-	force: Vector2 //gravity
-	mass: number
+	velocity: Vector2 // m/s
+	acceleration: Vector2 // m/s²
+	force: Vector2 // N (kg∙m/s²)
+	mass: number // kg
 	
 	constructor({
 		position = vec2(0),
@@ -42,11 +43,19 @@ export class WPhysicsModel {
 		this.acceleration.add(acceleration)
 	}
 
+	applyVelocity(velocity: Vector2) {
+		this.velocity.add(velocity)
+	}
+
+	move(displacement: Vector2) {
+		this.position.add(displacement)
+	}
+
 	updatePosition(dt: number) {
-		this.acceleration.add(this.force.scale(1 / this.mass))
-		this.force = vec2(0);
-		this.velocity.add(this.acceleration.scale(dt ** 2))
-		this.acceleration = vec2(0);
-		this.position.add(this.velocity.scale(dt))
+		this.applyAcceleration(this.force.scale(1 / this.mass))
+		this.applyVelocity(this.acceleration.scale(dt))
+		this.move(this.velocity.scale(dt))
+
+		this.acceleration = this.force = vec2(0);
 	}
 }

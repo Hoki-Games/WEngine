@@ -313,12 +313,11 @@ export class WTransformMatrix3 {
 			[0, 1, 0],
 			[translate.x, translate.y, 1]
 		])
-		// TODO
 		const cos = Math.cos(rotate)
 		const sin = Math.sin(rotate)
 		this.rotate = new WMatrix3([
-			[cos, -sin, 0],
-			[sin, cos, 0],
+			[cos, sin, 0],
+			[-sin, cos, 0],
 			[0, 0, 1]
 		])
 		this.scale = new WMatrix3([
@@ -329,15 +328,25 @@ export class WTransformMatrix3 {
 		this.origin = origin
 	}
 
-	apply(v: Vector2) {
-		v.add(this.origin.neg)
+	getMatrix() {
+		return this.translate.mult(this.rotate).mult(this.scale)
+	}
 
-		const trans = this.scale.mult(this.rotate).mult(this.translate).get()
-		const x = trans[0][0] * v.x + trans[1][0] * v.y + trans[2][0]
-		const y = trans[0][1] * v.x + trans[1][1] * v.y + trans[2][1]
-		v.x = x
-		v.y = y
+	apply(v: Vector2 | WVec2<number>) {
+		let x: number, y: number
+		if (v instanceof Vector2) {
+			x = v.x
+			y = v.y
+		} else [x, y] = v
+		x -= this.origin.x
+		y -= this.origin.y
 
-		v.add(this.origin)
+		const trans = this.getMatrix().get()
+		const dx = trans[0][0] * x + trans[1][0] * y + trans[2][0]
+		const dy = trans[0][1] * x + trans[1][1] * y + trans[2][1]
+		x = dx
+		y = dy
+
+		return this.origin.sum(vec2(x, y))
 	}
 }

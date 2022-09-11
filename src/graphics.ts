@@ -1,12 +1,18 @@
-import { narrowColor, narrowDimension, WColor, WDimension } from './math.js'
+import {
+	narrowColor,
+	narrowDimension,
+	WColor,
+	WDimension
+} from './math.js'
 import { WBasicObject } from './objects.js'
 
 export type WUniformType = Int32Array | Uint32Array | Float32Array
 
+type MatrixDim = keyof typeof matrixDim
 interface WUniform {
 	location: WebGLUniformLocation
 	data: WUniformType
-	type: 'i' | 'ui' | 'f'
+	type: 'i' | 'ui' | 'f' | MatrixDim
 }
 
 type WAttributeType = 'BYTE' | 'SHORT' | 'UNSIGNED_BYTE'
@@ -114,6 +120,12 @@ export class WScene {
 		}
 	}
 
+	updatePositions(dt: number) {
+		for (const name in this.objects) {
+			this.objects[name].physics.updatePosition(dt)
+		}
+	}
+
 	addObject(name: string, value: WBasicObject): void
 	addObject(entries: [string, WBasicObject][]): void
 	addObject(entries: { [key: string]: WBasicObject }): void
@@ -161,6 +173,19 @@ const texParamMap = {
 	TEXTURE_WRAP_R: 'texI',
 	TEXTURE_MAX_LOD: 'texF',
 	TEXTURE_MIN_LOD: 'texF'
+} as const
+
+// '2' | '2x3' | '2x4' | '3x2' | '3' | '3x4' | '4x2' | '4x3' | '4'
+const matrixDim = {
+	'2': 4,
+	'2x3': 6,
+	'2x4': 8,
+	'3x2': 6,
+	'3': 9,
+	'3x4': 12,
+	'4x2': 8,
+	'4x3': 12,
+	'4': 16
 } as const
 
 export class WRenderer {
@@ -249,15 +274,26 @@ export class WRenderer {
 		})
 
 		for (const name in this.#data.uniforms) {
-			const val = this.#data.uniforms[name]
-			const length = <1 | 2 | 3 | 4>val.data.length
-			const type = this.#data.uniforms[name].type
-			const func = `uniform${length}${type}v` as const
+			const uni = this.#data.uniforms[name]
+			const type = uni.type
+	
+			if (type in matrixDim) {
+				const func = `uniformMatrix${<MatrixDim>type}fv` as const
 
-			this.scene.gl[func](
-				this.#data.uniforms[name].location,
-				this.#data.uniforms[name].data
-			)
+				this.scene.gl[func](
+					uni.location,
+					false,
+					uni.data
+				)
+			} else {
+				const length = <1 | 2 | 3 | 4>uni.data.length
+				const func = `uniform${length}${<'i'|'ui'|'f'>type}v` as const
+
+				this.scene.gl[func](
+					uni.location,
+					uni.data
+				)
+			}
 		}
 
 		for (const name in this.#data.attributes) {
@@ -338,16 +374,33 @@ export class WRenderer {
 	getUniform(name: string) {
 		return this.#data.uniforms[name].data;
 	}
-	setUniform(name: string, value: Int32Array | Uint32Array | Float32Array) {
-		const type = (() => {switch (value.constructor) {
-		case Int32Array: return 'i'
-		case Uint32Array: return 'ui'
-		case Float32Array: return 'f'
-		default: throw new Error('Invalid data type')
-		}})()
+	setUniform(name: string, value: WUniformType): void
+	setUniform(name: string, value: Float32Array, matrix: MatrixDim): void
+	setUniform(
+		name: string,
+		value: WUniformType,
+		matrix?: MatrixDim
+	) {
+		let type: WUniform['type']
+		if (!matrix) {
+			type = (() => {switch (value.constructor) {
+			case Int32Array: return 'i'
+			case Uint32Array: return 'ui'
+			case Float32Array: return 'f'
+			default: throw new Error('Invalid data type')
+			}})()
 
-		if (value.length < 1 || value.length > 4)
-			throw new Error('Array length must be in bounds [1, 4]');
+			if (value.length < 1 || value.length > 4)
+				throw new Error('Array length must be in bounds [1, 4]');
+		} else {
+			type = matrix
+
+			if (!(value instanceof Float32Array))
+				throw new Error('Invalid data type')
+
+			if (value.length != matrixDim[matrix])
+				throw new Error(`Array length must be [${matrixDim[matrix]}]`)
+		}
 
 		if (!(name in this.#data.uniforms)) {
 			this.#data.uniforms[name] = {

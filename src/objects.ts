@@ -15,8 +15,11 @@ import {
 	WVec4
 } from './math.js'
 
+import { WPhysicsModel } from './physics.js';
+
 export interface WBasicObject {
 	renderer: WRenderer
+	physics: WPhysicsModel
 
 	init(): void
 	draw(): void
@@ -24,6 +27,8 @@ export interface WBasicObject {
 
 export class WCustomObject implements WBasicObject {
 	renderer: WRenderer
+	physics: WPhysicsModel
+
 	protected _vertsCount: number
 	protected _attributes: { [name: string]: WAttributeData }
 	protected _uniforms: { [name: string]: WUniformType }
@@ -38,7 +43,8 @@ export class WCustomObject implements WBasicObject {
 		attributes = {},
 		textures = [],
 		shaders,
-		vertsCount
+		vertsCount,
+		physicsModel = new WPhysicsModel({})
 	}: {
 		scene: WScene
 		attributes?: { [name: string]: WAttributeData }
@@ -49,12 +55,14 @@ export class WCustomObject implements WBasicObject {
 		}[]
 		shaders: WShader[]
 		vertsCount: number
+		physicsModel?: WPhysicsModel
 	}) {
 		this._attributes = attributes;
 		this._uniforms = uniforms
 		this._textures = textures
 		this._vertsCount = vertsCount
-		
+
+		this.physics = physicsModel
 		this.renderer = new WRenderer({ scene, shaders })
 	}
 
@@ -98,6 +106,10 @@ export class WCustomObject implements WBasicObject {
 		settings?: WTexSettings
 	) {
 		this.renderer.setTexture({ id, img, settings });
+	}
+
+	get vertsCount() {
+		return this._vertsCount
 	}
 }
 

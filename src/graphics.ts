@@ -2,7 +2,8 @@ import {
 	narrowColor,
 	narrowDimension,
 	WColor,
-	WDimension
+	WDimension,
+	WVec4
 } from './math.js'
 import { WBasicObject, WPositionedObject } from './objects.js'
 
@@ -77,7 +78,12 @@ type WSettings = {
 export class WScene {
 	display: HTMLCanvasElement
 	gl: WebGL2RenderingContext
-	settings: WSettings
+	settings: {
+		backgroundColor: WVec4<GLclampf>
+		viewport: WVec4<GLint, GLint, GLsizei, GLsizei>
+		enable: GLenum[]
+		depthFunc: GLenum
+	}
 	objects: Record<string, WBasicObject>
 
 	constructor({
@@ -89,18 +95,23 @@ export class WScene {
 	}) {
 		this.display = canvas;
 		this.gl = canvas.getContext('webgl2');
-		this.settings = settings
+		this.settings = {
+			backgroundColor: narrowColor(settings.backgroundColor),
+			viewport: narrowDimension(settings.viewport),
+			depthFunc: settings.depthFunc,
+			enable: settings.enable
+		}
 		this.objects = {}
 	}
 
 	init() {
-		this.gl.clearColor(...narrowColor(this.settings.backgroundColor))
+		this.gl.clearColor(...this.settings.backgroundColor)
 
 		this.settings.enable.forEach(v => this.gl.enable(v))
 
 		this.gl.depthFunc(this.settings.depthFunc);
-		
-		this.gl.viewport(...narrowDimension(this.settings.viewport))
+
+		this.resize()
 
 		for (const name in this.objects) {
 			this.objects[name].init()
@@ -116,6 +127,10 @@ export class WScene {
 		for (const name in this.objects) {
 			this.objects[name].draw()
 		}
+	}
+
+	resize() {
+		this.gl.viewport(...this.settings.viewport)
 	}
 
 	updatePositions(dt: number) {

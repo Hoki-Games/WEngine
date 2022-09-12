@@ -116,6 +116,7 @@ export class WCustomObject implements WBasicObject {
 
 export class WPositionedObject extends WCustomObject {
 	#physics: WPhysicsModel
+	#ratio: number
 
 	protected _tris: Float32Array
 
@@ -150,6 +151,7 @@ export class WPositionedObject extends WCustomObject {
 
 		this._tris = Float32Array.from(tris.flat(2))
 		this.physics = physicsModel
+		this.ratio = 1
 
 		this.setAttribute(
 			'i_vertexPosition',
@@ -221,6 +223,14 @@ export class WPositionedObject extends WCustomObject {
 		this.#physics = v
 		this.setUniform('u_transform', v.array, '3')
 	}
+
+	get ratio() {
+		return this.#ratio
+	}
+	set ratio(v) {
+		this.#ratio = v
+		this.setUniform('u_ratio', Float32Array.of(v))
+	}
 }
 
 export class WOneColorObject extends WPositionedObject {
@@ -237,6 +247,7 @@ export class WOneColorObject extends WPositionedObject {
 
 				uniform vec2 u_origin;
 				uniform mat3 u_transform;
+				uniform float u_ratio;
 
 				in vec3 i_vertexPosition;
 
@@ -245,6 +256,9 @@ export class WOneColorObject extends WPositionedObject {
 					pos = u_transform * pos;
 					pos = pos + vec3(u_origin, 0);
 					pos.z = v.z;
+					if (u_ratio != .0) {
+						pos.x /= u_ratio;
+					}
 					return pos;
 				}
 

@@ -4,7 +4,8 @@ import {
 	WAttributeData,
 	WUniformType,
 	WTexSettings,
-	WShader
+	WShader,
+	WMatrixDim
 } from './graphics.js'
 
 import {
@@ -12,14 +13,12 @@ import {
 	WColor,
 	WTri2,
 	WTri3,
-	WVec4
 } from './math.js'
 
 import { WPhysicsModel } from './physics.js';
 
 export interface WBasicObject {
 	renderer: WRenderer
-	physics: WPhysicsModel
 
 	init(): void
 	draw(): void
@@ -27,11 +26,10 @@ export interface WBasicObject {
 
 export class WCustomObject implements WBasicObject {
 	renderer: WRenderer
-	physics: WPhysicsModel
 
 	protected _vertsCount: number
-	protected _attributes: { [name: string]: WAttributeData }
-	protected _uniforms: { [name: string]: WUniformType }
+	protected _attributes: Record<string, WAttributeData>
+	protected _uniforms: Record<string, WUniformType>
 	protected _textures: {
 		img: TexImageSource
 		settings?: WTexSettings
@@ -43,26 +41,23 @@ export class WCustomObject implements WBasicObject {
 		attributes = {},
 		textures = [],
 		shaders,
-		vertsCount,
-		physicsModel = new WPhysicsModel({})
+		vertsCount
 	}: {
 		scene: WScene
-		attributes?: { [name: string]: WAttributeData }
-		uniforms?: { [name: string]: WUniformType }
+		attributes?: Record<string, WAttributeData>
+		uniforms?: Record<string, WUniformType>
 		textures?: {
 			img: TexImageSource
 			settings?: WTexSettings
 		}[]
 		shaders: WShader[]
 		vertsCount: number
-		physicsModel?: WPhysicsModel
 	}) {
 		this._attributes = attributes;
 		this._uniforms = uniforms
 		this._textures = textures
 		this._vertsCount = vertsCount
 
-		this.physics = physicsModel
 		this.renderer = new WRenderer({ scene, shaders })
 	}
 
@@ -93,8 +88,14 @@ export class WCustomObject implements WBasicObject {
 	getUniform(name: string) {
 		return this.renderer.getUniform(name)
 	}
-	setUniform(name: string, value: WUniformType) {
-		this.renderer.setUniform(name, value);
+	setUniform(name: string, value: WUniformType): void
+	setUniform(name: string, value: Float32Array, matrix: WMatrixDim): void
+	setUniform(
+		name: string,
+		value: WUniformType,
+		matrix?: WMatrixDim
+	) {
+		this.renderer.setUniform(name, <Float32Array>value, matrix);
 	}
 
 	getTexture(id: number) {
@@ -114,6 +115,8 @@ export class WCustomObject implements WBasicObject {
 }
 
 export class WPositionedObject extends WCustomObject {
+	#physics: WPhysicsModel
+
 	protected _tris: Float32Array
 
 	constructor({
@@ -122,17 +125,19 @@ export class WPositionedObject extends WCustomObject {
 		attributes = {},
 		textures = [],
 		shaders,
-		tris
+		tris,
+		physicsModel = new WPhysicsModel({})
 	}: {
 		scene: WScene
-		attributes?: { [name: string]: WAttributeData }
-		uniforms?: { [name: string]: WUniformType }
+		attributes?: Record<string, WAttributeData>
+		uniforms?: Record<string, WUniformType>
 		textures?: {
 			img: TexImageSource
 			settings?: WTexSettings
 		}[]
 		shaders: WShader[]
 		tris: WTri3<GLfloat>[]
+		physicsModel?: WPhysicsModel
 	}) {
 		super({
 			scene,
@@ -144,6 +149,7 @@ export class WPositionedObject extends WCustomObject {
 		})
 
 		this._tris = Float32Array.from(tris.flat(2))
+		this.physics = physicsModel
 
 		this.setAttribute(
 			'i_vertexPosition',
@@ -207,6 +213,14 @@ export class WPositionedObject extends WCustomObject {
 
 		this.renderer.updateAttribute('i_vertexPosition')
 	}
+
+	get physics() {
+		return this.#physics
+	}
+	set physics(v) {
+		this.#physics = v
+		this.setUniform('u_transform', v.array, '3')
+	}
 }
 
 export class WOneColorObject extends WPositionedObject {
@@ -220,21 +234,33 @@ export class WOneColorObject extends WPositionedObject {
 			shaders: [{
 				source: `#version 300 es
 				precision mediump float;
-				
+
+				uniform vec2 u_origin;
+				uniform mat3 u_transform;
+
 				in vec3 i_vertexPosition;
-				
+
+				vec3 transform(vec3 v) {
+					vec3 pos = vec3(vec2(v) - u_origin, 1);
+					pos = u_transform * pos;
+					pos = pos + vec3(u_origin, 0);
+					pos.z = v.z;
+					return pos;
+				}
+
 				void main() {
-					gl_Position = vec4(i_vertexPosition, 1.0);
+					vec3 pos = transform(i_vertexPosition);
+					gl_Position = vec4(pos, 1);
 				}`,
 				type: 'VERTEX_SHADER'
 			}, {
 				source: `#version 300 es
 				precision mediump float;
-				
+
 				uniform vec4 u_color;
-				
+
 				out vec4 o_fragColor;
-				
+
 				void main() {
 					o_fragColor = u_color;
 				}`,
@@ -263,8 +289,8 @@ export class WTexPositionedObject extends WPositionedObject {
 		uvmap
 	}: {
 		scene: WScene
-		attributes?: { [name: string]: WAttributeData }
-		uniforms?: { [name: string]: WUniformType }
+		attributes?: Record<string, WAttributeData>
+		uniforms?: Record<string, WUniformType>
 		textures?: {
 			img: TexImageSource
 			settings?: WTexSettings
@@ -360,15 +386,27 @@ export class WTextureObject extends WTexPositionedObject {
 			shaders: [{
 				source: `#version 300 es
 				precision mediump float;
-				
+
+				uniform vec2 u_origin;
+				uniform mat3 u_transform;
+
 				in vec3 i_vertexPosition;
 				in vec2 i_uvmap;
-				
+
 				out vec2 v_uvmap;
-				
+
+				vec3 transform(vec3 v) {
+					vec3 pos = vec3(vec2(v) - u_origin, 1);
+					pos = u_transform * pos;
+					pos = pos + vec3(u_origin, 0);
+					pos.z = v.z;
+					return pos;
+				}
+
 				void main() {
+					vec3 pos = transform(i_vertexPosition);
 					v_uvmap = i_uvmap;
-					gl_Position = vec4(i_vertexPosition, 1);
+					gl_Position = vec4(pos, 1);
 				}`,
 				type: 'VERTEX_SHADER'
 			}, {

@@ -1,6 +1,8 @@
 import { vec2, Vector2 } from './math.js'
 
 export class WPhysicsModel {
+	array: Float32Array
+
 	// Meter here is relative, so consider as unit
 	position: Vector2 // m
 	rotation: number // rad
@@ -33,6 +35,8 @@ export class WPhysicsModel {
 		this.velocity = velocity
 		this.acceleration = acceleration
 		this.force = vec2(0)
+
+		this.array = new Float32Array(9)
 	}
 
 	applyForce(force: Vector2) {
@@ -56,6 +60,12 @@ export class WPhysicsModel {
 		this.applyVelocity(this.acceleration.scale(dt))
 		this.move(this.velocity.scale(dt))
 
-		this.acceleration = this.force = vec2(0);
+		this.acceleration = this.force = vec2(0)
+
+		const [tx, ty] = this.position
+		const [rx, ry] = Vector2.fromDegree(this.rotation)
+		const [sx, sy] = this.scale
+
+		this.array.set([rx * sx, ry * sx, 0, -ry * sy, rx * sy, 0, tx, ty, 1])
 	}
 }

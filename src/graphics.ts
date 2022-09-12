@@ -4,15 +4,15 @@ import {
 	WColor,
 	WDimension
 } from './math.js'
-import { WBasicObject } from './objects.js'
+import { WBasicObject, WPositionedObject } from './objects.js'
 
 export type WUniformType = Int32Array | Uint32Array | Float32Array
 
-type MatrixDim = keyof typeof matrixDim
+export type WMatrixDim = keyof typeof matrixDim
 interface WUniform {
 	location: WebGLUniformLocation
 	data: WUniformType
-	type: 'i' | 'ui' | 'f' | MatrixDim
+	type: 'i' | 'ui' | 'f' | WMatrixDim
 }
 
 type WAttributeType = 'BYTE' | 'SHORT' | 'UNSIGNED_BYTE'
@@ -78,9 +78,7 @@ export class WScene {
 	display: HTMLCanvasElement
 	gl: WebGL2RenderingContext
 	settings: WSettings
-	objects: {
-		[key: string]: WBasicObject
-	}
+	objects: Record<string, WBasicObject>
 
 	constructor({
 		canvas,
@@ -122,17 +120,19 @@ export class WScene {
 
 	updatePositions(dt: number) {
 		for (const name in this.objects) {
-			this.objects[name].physics.updatePosition(dt)
+			const obj = this.objects[name]
+			if (obj instanceof WPositionedObject)
+				obj.physics.updatePosition(dt)
 		}
 	}
 
 	addObject(name: string, value: WBasicObject): void
 	addObject(entries: [string, WBasicObject][]): void
-	addObject(entries: { [key: string]: WBasicObject }): void
+	addObject(entries: Record<string, WBasicObject>): void
 	addObject(
 		arg1: string 
 			| [string, WBasicObject][] 
-			| { [key: string]: WBasicObject },
+			| Record<string, WBasicObject>,
 		arg2?: WBasicObject
 	) {
 		if (typeof arg1 == 'string') {
@@ -235,8 +235,8 @@ export class WRenderer {
 		attributes = {},
 		textures = []
 	}: {
-		uniforms?: {[name: string]: WUniformType}
-		attributes?: {[name: string]: WAttributeData}
+		uniforms?: Record<string, WUniformType>
+		attributes?: Record<string, WAttributeData>
 		textures?: {
 			img: TexImageSource
 			settings?: WTexSettings
@@ -278,7 +278,7 @@ export class WRenderer {
 			const type = uni.type
 	
 			if (type in matrixDim) {
-				const func = `uniformMatrix${<MatrixDim>type}fv` as const
+				const func = <const>`uniformMatrix${<WMatrixDim>type}fv`
 
 				this.scene.gl[func](
 					uni.location,
@@ -287,7 +287,7 @@ export class WRenderer {
 				)
 			} else {
 				const length = <1 | 2 | 3 | 4>uni.data.length
-				const func = `uniform${length}${<'i'|'ui'|'f'>type}v` as const
+				const func = <const>`uniform${length}${<'i'|'ui'|'f'>type}v`
 
 				this.scene.gl[func](
 					uni.location,
@@ -375,11 +375,11 @@ export class WRenderer {
 		return this.#data.uniforms[name].data;
 	}
 	setUniform(name: string, value: WUniformType): void
-	setUniform(name: string, value: Float32Array, matrix: MatrixDim): void
+	setUniform(name: string, value: Float32Array, matrix: WMatrixDim): void
 	setUniform(
 		name: string,
 		value: WUniformType,
-		matrix?: MatrixDim
+		matrix?: WMatrixDim
 	) {
 		let type: WUniform['type']
 		if (!matrix) {

@@ -36,6 +36,12 @@
             {
                 "allowEmptyCatch": true
             }
+        ],
+        "@typescript-eslint/no-this-alias": [
+            "warn",
+            {
+                "allowedNames": ["me"]
+            }
         ]
     }
 }

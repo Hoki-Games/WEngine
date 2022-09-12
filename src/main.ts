@@ -37,68 +37,46 @@ const scene = globalThis.scene = new WScene({
 // Earth - #01629C
 // TODO
 window.addEventListener('load', async () => {
-	const sun = new WPositionedObject({
-		scene,
-		shaders: [{
-			source: `#version 300 es
-			precision mediump float;
-			
-			in vec3 i_vertexPosition;
-
-			uniform vec2 u_origin;
-			uniform mat3 u_transform;
-			
-			void main() {
-				vec3 pos = vec3(vec2(i_vertexPosition) - u_origin, 1);
-				pos = u_transform * pos;
-				pos = pos + vec3(u_origin, 0);
-				pos.z = i_vertexPosition.z;
-				gl_Position = vec4(pos, 1);
-			}`,
-			type: 'VERTEX_SHADER'
-		}, {
-			source: `#version 300 es
-			precision mediump float;
-			
-			out vec4 o_fragColor;
-			
-			void main() {
-				o_fragColor = vec4(1, 1, 0, 1);
-			}`,
-			type: 'FRAGMENT_SHADER'
-		}],
-		tris: [[
-			[0.5, 0.9, 0],
-			[1, 0, 0],
-			[0.5, -0.9, 0],
-		], [
-			[-0.5, 0.9, 0],
-			[-1, 0, 0],
-			[-0.5, -0.9, 0],
-		], [
-			[-0.5, 0.9, 0],
-			[-0.5, -0.9, 0],
-			[0.5, -0.9, 0],
-		], [
-			[0.5, -0.9, 0],
-			[0.5, 0.9, 0],
-			[-0.5, 0.9, 0],
-		]]
-	})
+	const sun = new WOneColorObject(scene, '#FF0', [[
+		[0.5, 0.9, 0],
+		[1, 0, 0],
+		[0.5, -0.9, 0],
+	], [
+		[-0.5, 0.9, 0],
+		[-1, 0, 0],
+		[-0.5, -0.9, 0],
+	], [
+		[-0.5, 0.9, 0],
+		[-0.5, -0.9, 0],
+		[0.5, -0.9, 0],
+	], [
+		[0.5, -0.9, 0],
+		[0.5, 0.9, 0],
+		[-0.5, 0.9, 0],
+	]])
 	scene.addObject('sun', sun)
 
-	const transform = new WTransformMatrix3({
-		scale: vec2(0.5),
-		rotate: Math.PI / 2,
-		translate: vec2(-1, 0)
-	})
+	/* const earth = new WOneColorObject(scene, '#01629c', [[
+		[0.5, 0.9, 0],
+		[1, 0, 0],
+		[0.5, -0.9, 0],
+	], [
+		[-0.5, 0.9, 0],
+		[-1, 0, 0],
+		[-0.5, -0.9, 0],
+	], [
+		[-0.5, 0.9, 0],
+		[-0.5, -0.9, 0],
+		[0.5, -0.9, 0],
+	], [
+		[0.5, -0.9, 0],
+		[0.5, 0.9, 0],
+		[-0.5, 0.9, 0],
+	]])
+	scene.addObject('earth', earth) */
 
-	sun.renderer.setUniform(
-		'u_transform',
-		Float32Array.from(transform.getMatrix().get().flat(2)),
-		'3'
-	)
-	sun.renderer.setUniform('u_origin', Float32Array.of(1, 0))
+	sun.physics.scale = vec2(0.5)
+	sun.physics.rotation = Math.PI / 2
 
 	/* scene.addObject('earth', new WOneColorObject(scene, [0, 1, 1, 1], [[
 		[1, 1, 1],
@@ -113,6 +91,8 @@ window.addEventListener('load', async () => {
 	const draw = globalThis.draw = (time: number) => {
 		const dt = (time - lastTime) / 1000;
 		lastTime = time;
+
+		sun.physics.rotation += dt
 
 		scene.updatePositions(dt)
 

@@ -16,7 +16,7 @@ type WColorObject = {
 	b: GLclampf
 	a: GLclampf
 }
-export type WColor = WColorObject | WVec4<GLclampf>
+export type WColor = WColorObject | WVec4<GLclampf> | `#${string}`
 
 type WDimensionObject = {
 	x: GLint
@@ -27,10 +27,29 @@ type WDimensionObject = {
 export type WDimension = WDimensionObject
 	| WVec4<GLint, GLint, GLsizei, GLsizei>
 
-export const narrowColor = (color: WColor): WVec4<GLclampf> =>
-	Array.isArray(color)
-		? [...color]
-		: [color.r, color.g, color.b, color.a]
+export const narrowColor = (color: WColor): WVec4<GLclampf> => {
+	let ret: WVec4<GLclampf>
+
+	if (Array.isArray(color)) ret = [...color]
+	else if (typeof color == 'object')
+		ret = [color.r, color.g, color.b, color.a]
+	else {
+		const b4 = '([0-Fa-f])'.repeat(4)
+		const b8 = '([0-Fa-f][0-Fa-f])'.repeat(4)
+		
+		const rgba4 = new RegExp(`^#${b4}?$`).exec(color)
+		const rgba8 = new RegExp(`^#${b8}?$`).exec(color)
+
+		if (rgba4) ret = 
+			<WVec4<GLclampf>>rgba4.slice(1).map(v => parseInt(v, 16) / 16)
+		else if (rgba8) ret = 
+			<WVec4<GLclampf>>rgba8.slice(1).map(v => parseInt(v, 16) / 255)
+		else throw new Error('Invalid color data', { cause: color })
+	}
+
+	return ret
+}
+	
 
 export const narrowDimension = (color: WDimension):
 	WVec4<GLint, GLint, GLsizei, GLsizei> => Array.isArray(color)
@@ -45,7 +64,7 @@ export const vec2 = (x: number, y?: number): Vector2 => new Vector2(x, y ?? x)
 /**
   * Defines two-dimentional vector with x and y coordinates.
   */
-export class Vector2 {
+export class Vector2 implements Iterable<number> {
 	x: number
 	y: number
 
@@ -173,7 +192,6 @@ export class Vector2 {
 		return vec2(-this.x, -this.y)
 	}
 
-
 	/**
 	 * Returns this vector but with length equal to 1.
 	 */
@@ -188,10 +206,17 @@ export class Vector2 {
 		return Math.atan2(this.y, this.x)
 	}
 
+	get [Symbol.iterator]() {
+		const me = this
+		return function*() {
+			yield* [me.x, me.y]
+		}
+	}
+
 	/**
 	 * Creates a vector from length and rotation.
 	 */
-	static fromDegree(length: number, degree: number) {
+	static fromDegree(degree: number, length = 1) {
 		return vec2(length * Math.cos(degree), length * Math.sin(degree))
 	}
 }
@@ -201,9 +226,9 @@ export class WMatrix3 {
 
 	constructor(data?: WTri3<number>) {
 		this._data = data ?? [
-			[0, 0, 0],
-			[0, 0, 0],
-			[0, 0, 0]
+			[1, 0, 0],
+			[0, 1, 0],
+			[0, 0, 1]
 		]
 	}
 
@@ -292,9 +317,9 @@ export class WMatrix3 {
 }
 
 export class WTransformMatrix3 {
-	translate: WMatrix3
-	rotate: WMatrix3
-	scale: WMatrix3
+	translate: Vector2
+	rotate: number
+	scale: Vector2
 	origin: Vector2
 
 	constructor({
@@ -308,36 +333,34 @@ export class WTransformMatrix3 {
 		scale?: Vector2,
 		origin?: Vector2
 	}) {
-		this.translate = new WMatrix3([
-			[1, 0, 0],
-			[0, 1, 0],
-			[translate.x, translate.y, 1]
-		])
-		const cos = Math.cos(rotate)
-		const sin = Math.sin(rotate)
-		this.rotate = new WMatrix3([
-			[cos, sin, 0],
-			[-sin, cos, 0],
-			[0, 0, 1]
-		])
-		this.scale = new WMatrix3([
-			[scale.x, 0, 0],
-			[0, scale.y, 0],
-			[0, 0, 1]
-		])
+		this.translate = translate
+		this.rotate = rotate
+		this.scale = scale
 		this.origin = origin
 	}
 
 	getMatrix() {
-		return this.translate.mult(this.rotate).mult(this.scale)
+		const [tx, ty] = this.translate
+		const [rx, ry] = Vector2.fromDegree(this.rotate)
+		const [sx, sy] = this.scale
+
+		return new WMatrix3([
+			[1, 0, 0],
+			[0, 1, 0],
+			[tx, ty, 1]
+		]).mult(new WMatrix3([
+			[rx, ry, 0],
+			[-ry, rx, 0],
+			[0, 0, 1]
+		])).mult(new WMatrix3([
+			[sx, 0, 0],
+			[0, sy, 0],
+			[0, 0, 1]
+		]))
 	}
 
 	apply(v: Vector2 | WVec2<number>) {
-		let x: number, y: number
-		if (v instanceof Vector2) {
-			x = v.x
-			y = v.y
-		} else [x, y] = v
+		let [x, y] = v
 		x -= this.origin.x
 		y -= this.origin.y
 

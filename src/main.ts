@@ -1,6 +1,7 @@
 import { WScene } from './graphics.js'
 import { WOneColorObject, WPositionedObject } from './objects.js'
 import { vec2 } from './math.js'
+import { WSpring, WRope } from './physics.js';
 
 window.addEventListener('load', async () => {
 	const display = <HTMLCanvasElement>document.getElementById('display')
@@ -64,7 +65,7 @@ window.addEventListener('load', async () => {
 		[.588, -.809, 0],
 	]])
 
-	const moon = new WOneColorObject(scene, '#F4F6F0', [[
+	/* const moon = new WOneColorObject(scene, '#F4F6F0', [[
 		[1, 1, 0],
 		[1, -1, 0],
 		[-1, -1, 0],
@@ -72,23 +73,44 @@ window.addEventListener('load', async () => {
 		[-1, -1, 0],
 		[-1, 1, 0],
 		[1, 1, 0],
-	]])
+	]]) */
 
 	scene.addObject('sun', sun)
 	scene.addObject('earth', earth)
-	scene.addObject('moon', moon)
+	// scene.addObject('moon', moon)
 
-	sun.physics.move(vec2(0, -.1))
 	sun.physics.scale = vec2(.2)
-	sun.physics.applyVelocity(vec2(.1, 0))
+	sun.physics.mass = Infinity
 
-	earth.physics.move(vec2(0, .7))
-	earth.physics.scale = vec2(0.1)
-	earth.physics.applyVelocity(vec2(-.5, 0))
-	
-	moon.physics.move(vec2(.2, .7))
-	moon.physics.scale = vec2(0.05)
-	moon.physics.applyVelocity(vec2(-.5, 0))
+	earth.physics.move(vec2(0, .4))
+	earth.physics.scale = vec2(.1)
+	earth.physics.applyVelocity(vec2(-Math.random(), 0))
+	earth.physics.mass = 1000
+
+	// moon.physics.move(vec2(0, .5))
+	// moon.physics.scale = vec2(0.05)
+	// moon.physics.mass = 50
+
+	const rope = new WRope({
+		object1: sun.physics,
+		object2: earth.physics,
+		length: .5,
+		bounce: 0
+	})
+
+	/* const gravity1 = new WSpring({
+		object1: sun.physics,
+		object2: earth.physics,
+		L0: 0,
+		ks: 40
+	}) */
+
+	/* const gravity2 = new WSpring({
+		object1: earth.physics,
+		object2: moon.physics,
+		L0: 0,
+		ks: 100
+	}) */
 
 	sun.setUniform('u_origin', Float32Array.of(0, 0))
 	earth.setUniform('u_origin', Float32Array.of(0, 0))
@@ -107,20 +129,11 @@ window.addEventListener('load', async () => {
 
 		sun.physics.rotation -= dt
 		earth.physics.rotation += 1.5 * dt
-		moon.physics.rotation -= 2 * dt
+		// moon.physics.rotation -= 2 * dt
 
-		const dist = sun.physics.position.dif(earth.physics.position).length
-		const dist2 = earth.physics.position.dif(moon.physics.position).length
-
-		sun.physics.applyAcceleration(sun.physics.position.neg.scale(.8))
-
-		earth.physics.applyAcceleration(
-			sun.physics.position.dif(earth.physics.position).scale(dist)
-		)
-
-		moon.physics.applyAcceleration(
-			earth.physics.position.dif(moon.physics.position).scale(dist * 4)
-		)
+		rope.recalc()
+		// gravity1.recalc()
+		// gravity2.recalc()
 
 		scene.updatePositions(dt)
 
@@ -132,7 +145,11 @@ window.addEventListener('load', async () => {
 	requestAnimationFrame(draw)
 })
 //* Plans:
-//// Create matrix classes
+////Create matrix classes
 ////Expand objects to physics rules
 //* Implement physic bonds system
+// Create animation invoker system
 // Test with "The Lantern"
+// Implement colliders
+// Improve collision testing
+// Expand colliders with surface repultion logics

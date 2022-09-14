@@ -81,7 +81,7 @@ abstract class WBond {
 		this.object2 = o2
 	}
 
-	recalc() {}
+	recalc() {/* empty */}
 }
 
 export class WSpring extends WBond {

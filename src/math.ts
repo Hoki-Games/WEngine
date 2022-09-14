@@ -373,3 +373,56 @@ export class WTransformMatrix3 {
 		return this.origin.sum(vec2(x, y))
 	}
 }
+
+export const bezier = (x1: number, y1: number, x2: number, y2: number) => {
+	if (x1 < 0 || x1 > 1) throw new Error('x1 is out of bounds', { cause: x1 })
+	if (x2 < 0 || x2 > 1) throw new Error('x2 is out of bounds', { cause: x2 })
+	
+	const arr: WVec2<number>[] = []
+
+	const pos = (a: number, b: number, t: number) =>
+		t * (3 * a * (1 - t) ** 2 + t * (3 * b * (1 - t) + t))
+
+	return (steps: number) => {
+		for (let i = 0; i <= steps; i++) {
+			const t = i / steps
+
+			arr.push([
+				pos(x1, x2, t),
+				pos(y1, y2, t)
+			])
+		}
+
+		return (x: number) => {
+			if (x < 0 || x > 1) 
+				throw new Error('x is out of bounds', { cause: x })
+
+			const search = (l: number, r: number) => {
+				if (r - l == 1) {
+					const rX = arr[r][0]
+					const lX = arr[l][0]
+					const rY = arr[r][1]
+					const lY = arr[l][1]
+
+					return (x - rX) / (lX - rX) * lY + (x - lX) / (rX - lX) * rY
+				}
+
+				const i = Math.round(l + (r - l) / 2)
+				const v = arr[i]
+
+				if (v[0] < x) return search(i, r)
+				else if (v[0] > x) return search(l, i)
+
+				return v[1]
+			}
+		
+			return search(0, arr.length - 1)
+		}
+	}
+}
+
+// to bool: !!v
+// to string: `${v}`
+// to number: +v
+// to object: {v}
+// to array: [v]

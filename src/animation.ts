@@ -9,11 +9,31 @@ interface Timed {
 	update(time: number): number
 }
 
-export class Animation extends EventTarget {
+export class Blank {
+	#value: number
+	#percent: number
+
+	constructor(value = 0) {
+		this.#value = value
+		this.#percent = 0
+	}
+
+	get percent() {
+		return this.#percent
+	}
+	set percent(v: number) {
+		this.#percent = clamp(v, 0, 1)
+	}
+
+	get value() {
+		return this.#value
+	}
+}
+
+export class Animation extends Blank {
 	protected _func: (p: number) => number = p => p
 	protected _x0: number
 	protected _dx: number
-	#percent: number
 
 	constructor({
 		x0 = 0,
@@ -31,14 +51,6 @@ export class Animation extends EventTarget {
 		this._x0 = x0
 		this._dx = dx
 		this.percent = percent
-	}
-
-	get percent() {
-		return this.#percent
-	}
-	set percent(v: number) {
-		this.#percent = clamp(v, 0, 1)
-		if (this.#percent == 1) this.dispatchEvent(new CustomEvent('end'))
 	}
 
 	get value() {
@@ -76,24 +88,31 @@ export class TimedAnimation extends Animation implements Timed {
 }
 
 type Ani = {
-	anim: Animation
+	anim: Blank
 	s: number
-	dur: number
+	dur?: number
 }
 export class AnimationSequence extends Animation {
-	#sequence: Ani[]
-	
-	constructor(...animations: {
-		anim: Animation
-		dur: number
-	}[]) {
+	#sequence: Required<Ani>[]
+	offset: number
+
+	constructor(...animations: Omit<Ani, 's'>[])
+	constructor(offset?: number, ...animations: Omit<Ani, 's'>[])
+	constructor(arg1?: Omit<Ani, 's'> | number, ...arg2: Omit<Ani, 's'>[]) {
 		super()
 
 		this.#sequence = []
-		animations.forEach(v => this.add(v.anim, v.dur))
+
+		if (typeof arg1 == 'number') {
+			this.offset = arg1
+			arg2.forEach(v => this.add(v.anim, v.dur))
+		} else {
+			this.offset = 0
+			;[arg1, ...arg2].forEach(v => this.add(v.anim, v.dur))
+		}
 	}
 
-	add(anim: Animation, dur: number) {
+	add(anim: Blank, dur = 1) {
 		this.#sequence.push({
 			anim,
 			s: this.length,
@@ -129,7 +148,7 @@ export class AnimationSequence extends Animation {
 		const anim = this.#sequence.find(v => v.s <= p && v.s + v.dur >= p)
 
 		anim.anim.percent = (p - anim.s) / anim.dur
-		return anim.anim.value
+		return this.offset + anim.anim.value
 	}
 }
 
@@ -140,13 +159,15 @@ export class TimedAnimationSequence extends AnimationSequence implements Timed {
 	constructor({
 		t0 = 0,
 		dur = 1,
+		offset,
 		animations = []
 	}: {
-		t0?: number,
-		dur?: number,
+		t0?: number
+		dur?: number
+		offset?: number
 		animations?: Omit<Ani, 's'>[]
 	} = {}) {
-		super(...animations)
+		super(offset, ...animations)
 
 		this.t0 = t0
 		this.dur = dur

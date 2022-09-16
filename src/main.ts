@@ -3,6 +3,7 @@ import { WOneColorObject, WPositionedObject } from './objects.js'
 import { vec2, bezier } from './math.js'
 import {
 	Animation,
+	Blank,
 	TimedAnimation,
 	TimedAnimationSequence
 } from './animation.js'
@@ -88,36 +89,11 @@ window.addEventListener('load', async () => {
 
 	earth.physics.move(vec2(-.5, .5))
 	earth.physics.scale = vec2(.1)
-	// earth.physics.applyVelocity(vec2(-Math.random(), 0))
 	// earth.physics.mass = 1000
 
 	// moon.physics.move(vec2(0, .5))
 	// moon.physics.scale = vec2(0.05)
 	// moon.physics.mass = 50
-
-	/* const rope = new WRope({
-		object1: sun.physics,
-		object2: earth.physics,
-		length: .5,
-		bounce: 0
-	}) */
-
-	/* const gravity1 = new WSpring({
-		object1: sun.physics,
-		object2: earth.physics,
-		L0: 0,
-		ks: 40
-	}) */
-
-	/* const gravity2 = new WSpring({
-		object1: earth.physics,
-		object2: moon.physics,
-		L0: 0,
-		ks: 100
-	}) */
-
-	// sun.setUniform('u_origin', Float32Array.of(0, 0))
-	earth.setUniform('u_origin', Float32Array.of(0, 0))
 
 	window.addEventListener('resize', resize)
 	resize()
@@ -127,39 +103,44 @@ window.addEventListener('load', async () => {
 	let lastTime = -1
 
 	const seqAnimX = new TimedAnimationSequence({
-		t0: performance.now(),
-		dur: 6000,
-		animations: [{
-			anim: new Animation({
-				x0: earth.physics.position.x,
-				dx: 1
-			}),
-			dur: 2000
-		},
-		{
-			anim: new Animation({
-				x0: earth.physics.position.x + 1,
-				dx: 0
-			}),
-			dur: 2000
-		},
-		{
-			anim: new Animation({
-				x0: earth.physics.position.x + 1, // TODO
+		offset: earth.physics.position.x,
+		t0: 0,
+		dur: 8,
+		animations: [
+			{ anim: new Animation() },
+			{ anim: new Blank(1) },
+			{ anim: new Animation({
+				x0: 1,
 				dx: -1,
 				func: bezier(.17, .9, .87, .2)(100)
-			}),
-			dur: 2000
-		}]
+			}) },
+			{ anim: new Animation({
+				func: t => -Math.sin(t * 9 * Math.PI) * .1
+			}) }
+		]
 	})
 
-	const seqAnimY = new TimedAnimation({
-		t0: performance.now() + 2000,
-		dur: 2000,
-		x0: earth.physics.position.y,
-		dx: -1,
-		func: t => +(t == 1)
+	const seqAnimY = new TimedAnimationSequence({
+		offset: earth.physics.position.y,
+		t0: 2,
+		dur: 6,
+		animations: [
+			{ anim: new Animation({
+				dx: -1,
+				func: t => +(t == 1)
+			}) },
+			{ anim: new Blank(-1) },
+			{ anim: new Animation({ x0: -1 }) }
+		]
 	})
+
+	const loop = (t: number, max: number) => {
+		if (t > max) return loop(t - max, max)
+		if (t < 0) return loop(t + max, max)
+		return t
+	}
+
+	let t = 0
 
 	const draw = globalThis.draw = (time: number) => {
 		if (lastTime < 0) lastTime = time
@@ -170,8 +151,10 @@ window.addEventListener('load', async () => {
 		earth.physics.rotation += 1.5 * dt
 		// moon.physics.rotation -= 2 * dt
 
-		earth.physics.position.x = seqAnimX.update(performance.now())
-		earth.physics.position.y = seqAnimY.update(performance.now())
+		t = loop(t + dt, 8)
+
+		earth.physics.position.x = seqAnimX.update(t)
+		earth.physics.position.y = seqAnimY.update(t)
 
 		// rope.recalc()
 		// gravity1.recalc()

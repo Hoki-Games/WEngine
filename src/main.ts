@@ -1,7 +1,11 @@
 import { WScene } from './graphics.js'
 import { WOneColorObject, WPositionedObject } from './objects.js'
-import { vec2 } from './math.js'
-import { WSpring, WRope } from './physics.js';
+import { vec2, bezier } from './math.js'
+import {
+	Animation,
+	TimedAnimation,
+	TimedAnimationSequence
+} from './animation.js'
 
 window.addEventListener('load', async () => {
 	const display = <HTMLCanvasElement>document.getElementById('display')
@@ -33,7 +37,7 @@ window.addEventListener('load', async () => {
 		scene.resize()
 	}
 
-	const sun = new WOneColorObject(scene, '#FF0', [[
+	/* const sun = new WOneColorObject(scene, '#FF0', [[
 		[.5, .866, 0],
 		[1, 0, 0],
 		[.5, -.866, 0],
@@ -49,7 +53,7 @@ window.addEventListener('load', async () => {
 		[.5, -.866, 0],
 		[.5, .866, 0],
 		[-.5, .866, 0],
-	]])
+	]]) */
 
 	const earth = new WOneColorObject(scene, '#01629c', [[
 		[-.588, -.809, 0],
@@ -65,7 +69,7 @@ window.addEventListener('load', async () => {
 		[.588, -.809, 0],
 	]])
 
-	const moon = new WOneColorObject(scene, '#F4F6F0', [[
+	/* const moon = new WOneColorObject(scene, '#F4F6F0', [[
 		[1, 1, 0],
 		[1, -1, 0],
 		[-1, -1, 0],
@@ -73,23 +77,23 @@ window.addEventListener('load', async () => {
 		[-1, -1, 0],
 		[-1, 1, 0],
 		[1, 1, 0],
-	]])
+	]]) */
 
-	scene.addObject('sun', sun)
+	// scene.addObject('sun', sun)
 	scene.addObject('earth', earth)
-	scene.addObject('moon', moon)
+	// scene.addObject('moon', moon)
 
-	sun.physics.scale = vec2(.2)
-	sun.physics.mass = Infinity
+	// sun.physics.scale = vec2(.2)
+	// sun.physics.mass = Infinity
 
-	earth.physics.move(vec2(0, .4))
+	earth.physics.move(vec2(-.5, .5))
 	earth.physics.scale = vec2(.1)
-	earth.physics.applyVelocity(vec2(-Math.random(), 0))
-	earth.physics.mass = 1000
+	// earth.physics.applyVelocity(vec2(-Math.random(), 0))
+	// earth.physics.mass = 1000
 
-	moon.physics.move(vec2(0, .5))
-	moon.physics.scale = vec2(0.05)
-	moon.physics.mass = 50
+	// moon.physics.move(vec2(0, .5))
+	// moon.physics.scale = vec2(0.05)
+	// moon.physics.mass = 50
 
 	/* const rope = new WRope({
 		object1: sun.physics,
@@ -98,21 +102,21 @@ window.addEventListener('load', async () => {
 		bounce: 0
 	}) */
 
-	const gravity1 = new WSpring({
+	/* const gravity1 = new WSpring({
 		object1: sun.physics,
 		object2: earth.physics,
 		L0: 0,
 		ks: 40
-	})
+	}) */
 
-	const gravity2 = new WSpring({
+	/* const gravity2 = new WSpring({
 		object1: earth.physics,
 		object2: moon.physics,
 		L0: 0,
 		ks: 100
-	})
+	}) */
 
-	sun.setUniform('u_origin', Float32Array.of(0, 0))
+	// sun.setUniform('u_origin', Float32Array.of(0, 0))
 	earth.setUniform('u_origin', Float32Array.of(0, 0))
 
 	window.addEventListener('resize', resize)
@@ -122,18 +126,56 @@ window.addEventListener('load', async () => {
 
 	let lastTime = -1
 
+	const seqAnimX = new TimedAnimationSequence({
+		t0: performance.now(),
+		dur: 6000,
+		animations: [{
+			anim: new Animation({
+				x0: earth.physics.position.x,
+				dx: 1
+			}),
+			dur: 2000
+		},
+		{
+			anim: new Animation({
+				x0: earth.physics.position.x + 1,
+				dx: 0
+			}),
+			dur: 2000
+		},
+		{
+			anim: new Animation({
+				x0: earth.physics.position.x + 1, // TODO
+				dx: -1,
+				func: bezier(.17, .9, .87, .2)(100)
+			}),
+			dur: 2000
+		}]
+	})
+
+	const seqAnimY = new TimedAnimation({
+		t0: performance.now() + 2000,
+		dur: 2000,
+		x0: earth.physics.position.y,
+		dx: -1,
+		func: t => +(t == 1)
+	})
+
 	const draw = globalThis.draw = (time: number) => {
 		if (lastTime < 0) lastTime = time
 		const dt = (time - lastTime) / 1000;
 		lastTime = time;
-
-		sun.physics.rotation -= dt
+		
+		// sun.physics.rotation -= dt
 		earth.physics.rotation += 1.5 * dt
-		moon.physics.rotation -= 2 * dt
+		// moon.physics.rotation -= 2 * dt
+
+		earth.physics.position.x = seqAnimX.update(performance.now())
+		earth.physics.position.y = seqAnimY.update(performance.now())
 
 		// rope.recalc()
-		gravity1.recalc()
-		gravity2.recalc()
+		// gravity1.recalc()
+		// gravity2.recalc()
 
 		scene.updatePositions(dt)
 

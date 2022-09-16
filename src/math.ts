@@ -421,8 +421,5 @@ export const bezier = (x1: number, y1: number, x2: number, y2: number) => {
 	}
 }
 
-// to bool: !!v
-// to string: `${v}`
-// to number: +v
-// to object: {v}
-// to array: [v]
+export const clamp = (value: number, min: number, max: number) =>
+	Math.min(Math.max(min, value), max)

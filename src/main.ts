@@ -1,12 +1,7 @@
 import { WScene } from './graphics.js'
 import { WOneColorObject, WPositionedObject } from './objects.js'
 import { vec2, bezier } from './math.js'
-import {
-	Animation,
-	Blank,
-	TimedAnimation,
-	TimedAnimationSequence
-} from './animation.js'
+import { Animation, Blank, TimedAnimationSequence } from './animation.js'
 
 window.addEventListener('load', async () => {
 	const display = <HTMLCanvasElement>document.getElementById('display')
@@ -134,6 +129,8 @@ window.addEventListener('load', async () => {
 		]
 	})
 
+	scene.addAnimation(seqAnimX, seqAnimY)
+
 	const loop = (t: number, max: number) => {
 		if (t > max) return loop(t - max, max)
 		if (t < 0) return loop(t + max, max)
@@ -153,12 +150,10 @@ window.addEventListener('load', async () => {
 
 		t = loop(t + dt, 8)
 
-		earth.physics.position.x = seqAnimX.update(t)
-		earth.physics.position.y = seqAnimY.update(t)
+		scene.updateAnimations(t)
 
-		// rope.recalc()
-		// gravity1.recalc()
-		// gravity2.recalc()
+		earth.physics.position.x = seqAnimX.value
+		earth.physics.position.y = seqAnimY.value
 
 		scene.updatePositions(dt)
 
@@ -172,9 +167,13 @@ window.addEventListener('load', async () => {
 //* Plans:
 ////Create matrix classes
 ////Expand objects to physics rules
+//* Add simple element shapes
 // Implement physic bonds system
-//* Create animation invoker system
+////Create animation invoker system
 // Test with "The Lantern"
 // Implement colliders
 // Improve collision testing
 // Expand colliders with surface repultion logics
+
+
+// TODO: координатная сетка на фоне, на ней единичный круг, две точки ездят по нему (тягая мышкой), через них линии проходят (+координаты)

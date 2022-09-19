@@ -1,13 +1,8 @@
 import { vec2, Vector2 } from './math.js'
-import { WBasicObject } from './objects.js'
+import { Shape } from './shapes.js'
 
-export class WPhysicsModel {
+export class WPhysicsModel extends Shape {
 	array: Float32Array
-
-	// Meter here is relative, so consider as unit
-	position: Vector2 // m
-	rotation: number // rad
-	scale: Vector2 // m
 
 	velocity: Vector2 // m/s
 	acceleration: Vector2 // m/s²
@@ -29,9 +24,8 @@ export class WPhysicsModel {
 		velocity?: Vector2
 		acceleration?: Vector2
 	}) {
-		this.position = position
-		this.rotation = rotation
-		this.scale = scale
+		super({ position, rotation, scale })
+
 		this.mass = mass
 		this.velocity = velocity
 		this.acceleration = acceleration

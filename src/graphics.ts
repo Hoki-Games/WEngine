@@ -1,3 +1,4 @@
+import { Timed } from './animation.js'
 import {
 	narrowColor,
 	narrowDimension,
@@ -85,6 +86,7 @@ export class WScene {
 		depthFunc: GLenum
 	}
 	objects: Record<string, WBasicObject>
+	animations: Timed[]
 
 	constructor({
 		canvas,
@@ -102,6 +104,7 @@ export class WScene {
 			enable: settings.enable
 		}
 		this.objects = {}
+		this.animations = []
 	}
 
 	init() {
@@ -160,8 +163,15 @@ export class WScene {
 			}
 		}
 	}
-}
 
+	addAnimation(...animations: Timed[]) {
+		this.animations = [...this.animations, ...animations]
+	}
+
+	updateAnimations(time: number) {
+		this.animations.forEach(v => v.update(time))
+	}
+}
 
 const texParamMap = {
 	PACK_ALIGNMENT: 'pixelStoreI',

@@ -6,7 +6,7 @@ import {
 	WDimension,
 	WVec4
 } from './math.js'
-import { WBasicObject, WPositionedObject } from './objects.js'
+import { BasicObject, WPositionedObject } from './objects.js'
 
 export type WUniformType = Int32Array | Uint32Array | Float32Array
 
@@ -85,7 +85,7 @@ export class WScene {
 		enable: GLenum[]
 		depthFunc: GLenum
 	}
-	objects: Record<string, WBasicObject>
+	objects: Record<string, BasicObject>
 	animations: Timed[]
 
 	constructor({
@@ -96,7 +96,9 @@ export class WScene {
 		settings: WSettings
 	}) {
 		this.display = canvas;
-		this.gl = canvas.getContext('webgl2');
+		this.gl = canvas.getContext('webgl2', {
+			premultipliedAlpha: false
+		});
 		this.settings = {
 			backgroundColor: narrowColor(settings.backgroundColor),
 			viewport: narrowDimension(settings.viewport),
@@ -144,14 +146,14 @@ export class WScene {
 		}
 	}
 
-	addObject(name: string, value: WBasicObject): void
-	addObject(entries: [string, WBasicObject][]): void
-	addObject(entries: Record<string, WBasicObject>): void
+	addObject(name: string, value: BasicObject): void
+	addObject(entries: [string, BasicObject][]): void
+	addObject(entries: Record<string, BasicObject>): void
 	addObject(
 		arg1: string 
-			| [string, WBasicObject][] 
-			| Record<string, WBasicObject>,
-		arg2?: WBasicObject
+			| [string, BasicObject][] 
+			| Record<string, BasicObject>,
+		arg2?: BasicObject
 	) {
 		if (typeof arg1 == 'string') {
 			this.objects[arg1] = arg2;
@@ -290,7 +292,7 @@ export class WRenderer {
 		})
 	}
 
-	draw(vertsCount: GLsizei) {
+	draw(vertsCount: GLsizei, mode: GLenum = WebGL2RenderingContext.TRIANGLES) {
 		this.scene.gl.useProgram(this.program);
 
 		this.#data.textures.forEach((v, i) => {
@@ -352,11 +354,7 @@ export class WRenderer {
 			);
 		}
 
-		this.scene.gl.drawArrays(
-			this.scene.gl.TRIANGLES,
-			0,
-			vertsCount
-		)
+		this.scene.gl.drawArrays(mode, 0, vertsCount)
 	}
 
 	getAttribute(name: string) {

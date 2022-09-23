@@ -1,5 +1,5 @@
 import { clamp } from './math.js'
-import { WBasicObject } from './objects.js'
+import { BasicObject } from './objects.js'
 
 export interface Timed {
 	t0: number
@@ -178,16 +178,4 @@ export class TimedAnimationSequence extends AnimationSequence implements Timed {
 		this.percent = (time - this.t0) / this.dur
 		return this.value
 	}
-}
-
-export class AnimationInvoker {
-	animations: TimedAnimationSequence[]
-	time: number
-	
-	constructor(time: number, ...animations: TimedAnimationSequence[]) {
-		this.animations = animations
-		this.time = time
-	}
-
-	
 }

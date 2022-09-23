@@ -1,4 +1,4 @@
-import { Vector2, vec2 } from "./math"
+import { Vector2, vec2 } from "./math.js"
 
 export class Shape {
 	position: Vector2

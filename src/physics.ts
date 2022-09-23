@@ -23,7 +23,7 @@ export class WPhysicsModel extends Shape {
 		mass?: number
 		velocity?: Vector2
 		acceleration?: Vector2
-	}) {
+	} = {}) {
 		super({ position, rotation, scale })
 
 		this.mass = mass

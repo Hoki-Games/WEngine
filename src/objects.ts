@@ -10,21 +10,26 @@ import {
 
 import {
 	narrowColor,
+	vec2,
 	WColor,
+	WVec3,
+	WLine3,
 	WTri2,
-	WTri3,
+	WTri3
 } from './math.js'
 
 import { WPhysicsModel } from './physics.js';
 
-export interface WBasicObject {
+export interface BasicObject {
 	renderer: WRenderer
 
 	init(): void
 	draw(): void
 }
 
-export class WCustomObject implements WBasicObject {
+export class CustomObject implements BasicObject {
+	#drawMode: GLenum
+
 	renderer: WRenderer
 
 	protected _vertsCount: number
@@ -41,7 +46,8 @@ export class WCustomObject implements WBasicObject {
 		attributes = {},
 		textures = [],
 		shaders,
-		vertsCount
+		vertsCount,
+		drawMode = WebGL2RenderingContext.TRIANGLES
 	}: {
 		scene: WScene
 		attributes?: Record<string, WAttributeData>
@@ -51,12 +57,14 @@ export class WCustomObject implements WBasicObject {
 			settings?: WTexSettings
 		}[]
 		shaders: WShader[]
-		vertsCount: number
+		vertsCount: number,
+		drawMode?: GLenum
 	}) {
-		this._attributes = attributes;
+		this._attributes = attributes
 		this._uniforms = uniforms
 		this._textures = textures
 		this._vertsCount = vertsCount
+		this.#drawMode = drawMode
 
 		this.renderer = new WRenderer({ scene, shaders })
 	}
@@ -70,7 +78,7 @@ export class WCustomObject implements WBasicObject {
 	}
 
 	draw() {
-		this.renderer.draw(this._vertsCount)
+		this.renderer.draw(this._vertsCount, this.#drawMode)
 	}
 
 	getAttribute(name: string) {
@@ -114,7 +122,7 @@ export class WCustomObject implements WBasicObject {
 	}
 }
 
-export class WPositionedObject extends WCustomObject {
+export class WPositionedObject extends CustomObject {
 	#physics: WPhysicsModel
 	#ratio: number
 
@@ -127,7 +135,7 @@ export class WPositionedObject extends WCustomObject {
 		textures = [],
 		shaders,
 		tris,
-		physicsModel = new WPhysicsModel({})
+		physicsModel = new WPhysicsModel()
 	}: {
 		scene: WScene
 		attributes?: Record<string, WAttributeData>
@@ -426,13 +434,13 @@ export class WTextureObject extends WTexPositionedObject {
 			}, {
 				source: `#version 300 es
 				precision mediump float;
-				
+
 				uniform sampler2D u_texture;
-				
+
 				in vec2 v_uvmap;
-				
+
 				out vec4 o_fragColor;
-				
+
 				void main() {
 					o_fragColor = texture(u_texture, v_uvmap);
 				}`,
@@ -459,5 +467,142 @@ export class WTextureObject extends WTexPositionedObject {
 		})
 
 		this.img = img;
+	}
+}
+
+export class LinesObject extends WOneColorObject {
+	constructor({
+		scene,
+		lines,
+		width = .1
+	}: {
+		scene: WScene
+		lines: WLine3<number>[]
+		width?: number
+	}) {
+		const verts: WTri3<number>[] = []
+
+		for (const line of lines) {
+			const v1 = vec2(line[0][0], line[0][1])
+			const v2 = vec2(line[1][0], line[1][1])
+			const a = v2.dif(v1)
+			const b = a.right
+			const c = b.scale(width / b.length)
+
+			verts.push(<never>[
+				[...v2.dif(c), line[1][2]],
+				[...v1.sum(c), line[0][2]],
+				[...v1.dif(c), line[0][2]]
+			])
+
+			verts.push(<never>[
+				[...v2.dif(c), line[1][2]],
+				[...v2.sum(c), line[1][2]],
+				[...v1.sum(c), line[0][2]]
+			])
+		}
+
+		super(scene, [0, 0, 1, 1], verts)
+	}
+}
+
+export class CircleObject extends WPositionedObject {
+	innerR: number
+	outerR: number
+
+	constructor({
+		scene,
+		innerR = 0,
+		outerR,
+		position
+
+	}: {
+		scene: WScene
+		innerR?: number,
+		outerR: number,
+		position: WVec3<number>
+	}) {
+		super({
+			scene,
+			shaders: [{
+				source: `#version 300 es
+				precision mediump float;
+
+				uniform vec2 u_origin;
+				uniform mat3 u_transform;
+				uniform float u_ratio;
+
+				in vec3 i_vertexPosition;
+				in vec2 i_uvmap;
+
+				out vec2 v_uvmap;
+
+				vec3 transform(vec3 v) {
+					vec3 pos = vec3(vec2(v) - u_origin, 1);
+					pos = u_transform * pos;
+					pos = pos + vec3(u_origin, 0);
+					pos.z = v.z;
+					if (u_ratio != .0) {
+						pos.x /= u_ratio;
+					}
+					return pos;
+				}
+
+				void main() {
+					v_uvmap = i_uvmap;
+					vec3 pos = transform(i_vertexPosition);
+					gl_Position = vec4(pos, 1);
+				}`,
+				type: 'VERTEX_SHADER'
+			}, {
+				source: `#version 300 es
+				precision mediump float;
+
+				uniform float u_innerRadius;
+
+				in vec2 v_uvmap;
+
+				out vec4 o_fragColor;
+
+				void main() {
+					o_fragColor = vec4(1, 1, 1, 1);
+					float kat1 = pow(v_uvmap.x, 2.);
+					float kat2 = pow(v_uvmap.y, 2.);
+					float dist = sqrt(kat1 + kat2);
+					if (dist > 1. || dist < u_innerRadius) o_fragColor.a = 0.;
+				}`,
+				type: 'FRAGMENT_SHADER'
+			}],
+			uniforms: {
+				'u_innerRadius': Float32Array.of(innerR / outerR)
+			},
+			attributes: {
+				'i_uvmap': {
+					data: Float32Array.of(
+						1, 1,
+						-1, -1,
+						-1, 1,
+
+						1, 1,
+						1, -1,
+						-1, -1
+					),
+					length: 2,
+					type: 'FLOAT'
+				}
+			},
+			tris: [
+				[
+					[position[0] + outerR, position[1] + outerR, position[2]],
+					[position[0] - outerR, position[1] - outerR, position[2]],
+					[position[0] - outerR, position[1] + outerR, position[2]]
+				], [
+					[position[0] + outerR, position[1] + outerR, position[2]],
+					[position[0] + outerR, position[1] - outerR, position[2]],
+					[position[0] - outerR, position[1] - outerR, position[2]]
+				]
+			]
+		})
+
 	}
 }

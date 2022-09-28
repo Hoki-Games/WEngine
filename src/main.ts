@@ -15,6 +15,10 @@ window.addEventListener('load', async () => {
 		settings: {
 			backgroundColor: '#150E1C',
 			depthFunc: WebGL2RenderingContext.LEQUAL,
+			blendFunc: [
+				WebGL2RenderingContext.SRC_ALPHA,
+				WebGL2RenderingContext.ONE_MINUS_SRC_ALPHA
+			],
 			enable: [WebGL2RenderingContext.DEPTH_TEST],
 			viewport: { x: 0, y: 0, width: 1, height: 1 }
 		}
@@ -86,7 +90,7 @@ window.addEventListener('load', async () => {
 	const circle = new CircleObject({
 		scene,
 		innerR: .05,
-		outerR: .1,
+		scale: .1,
 		position: [.5, .5, 0]
 	})
 

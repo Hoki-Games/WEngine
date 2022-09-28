@@ -74,6 +74,7 @@ type WSettings = {
 	viewport: WDimension
 	enable: GLenum[]
 	depthFunc: GLenum
+	blendFunc: [GLenum, GLenum]
 }
 
 export class WScene {
@@ -84,6 +85,7 @@ export class WScene {
 		viewport: WVec4<GLint, GLint, GLsizei, GLsizei>
 		enable: GLenum[]
 		depthFunc: GLenum
+		blendFunc: [GLenum, GLenum]
 	}
 	objects: Record<string, BasicObject>
 	animations: Timed[]
@@ -103,6 +105,7 @@ export class WScene {
 			backgroundColor: narrowColor(settings.backgroundColor),
 			viewport: narrowDimension(settings.viewport),
 			depthFunc: settings.depthFunc,
+			blendFunc: settings.blendFunc,
 			enable: settings.enable
 		}
 		this.objects = {}
@@ -115,6 +118,8 @@ export class WScene {
 		this.settings.enable.forEach(v => this.gl.enable(v))
 
 		this.gl.depthFunc(this.settings.depthFunc);
+
+		this.gl.blendFunc(...this.settings.blendFunc)
 
 		this.resize()
 
@@ -164,6 +169,14 @@ export class WScene {
 				this.objects[name] = arg1[name]
 			}
 		}
+	}
+
+	removeObject(...name: string[]) {
+		name.forEach(v => delete this.objects[v])
+	}
+
+	clearObjects() {
+		this.objects = {}
 	}
 
 	addAnimation(...animations: Timed[]) {

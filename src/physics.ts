@@ -32,6 +32,8 @@ export class WPhysicsModel extends Shape {
 		this.force = vec2(0)
 
 		this.array = new Float32Array(9)
+
+		this.updatePosition(0)
 	}
 
 	applyForce(force: Vector2) {

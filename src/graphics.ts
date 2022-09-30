@@ -71,9 +71,11 @@ export type WShader = {
 
 type WSettings = {
 	backgroundColor: WColor
+	premultipliedAlpha?: boolean
 	viewport: WDimension
-	enable: GLenum[]
-	depthFunc: GLenum
+	enable?: GLenum[]
+	depthFunc?: GLenum
+	blendFunc?: [GLenum, GLenum]
 }
 
 export class WScene {
@@ -84,6 +86,7 @@ export class WScene {
 		viewport: WVec4<GLint, GLint, GLsizei, GLsizei>
 		enable: GLenum[]
 		depthFunc: GLenum
+		blendFunc: [GLenum, GLenum]
 	}
 	objects: Record<string, BasicObject>
 	animations: Timed[]
@@ -97,13 +100,17 @@ export class WScene {
 	}) {
 		this.display = canvas;
 		this.gl = canvas.getContext('webgl2', {
-			premultipliedAlpha: false
+			premultipliedAlpha: settings.premultipliedAlpha ?? true
 		});
 		this.settings = {
 			backgroundColor: narrowColor(settings.backgroundColor),
 			viewport: narrowDimension(settings.viewport),
-			depthFunc: settings.depthFunc,
-			enable: settings.enable
+			depthFunc: settings.depthFunc ?? WebGL2RenderingContext.LEQUAL,
+			blendFunc: settings.blendFunc ?? [
+				WebGL2RenderingContext.ONE,
+				WebGL2RenderingContext.ONE_MINUS_SRC_ALPHA
+			],
+			enable: settings.enable ?? []
 		}
 		this.objects = {}
 		this.animations = []
@@ -115,6 +122,7 @@ export class WScene {
 		this.settings.enable.forEach(v => this.gl.enable(v))
 
 		this.gl.depthFunc(this.settings.depthFunc);
+		this.gl.blendFunc(...this.settings.blendFunc)
 
 		this.resize()
 

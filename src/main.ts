@@ -1,11 +1,5 @@
 import { WScene } from './graphics.js'
-import {
-	CircleObject,
-	LinesObject,
-	WPositionedObject
-} from './objects.js'
-import { vec2, bezier } from './math.js'
-import { Animation, Blank, TimedAnimationSequence } from './animation.js'
+import { WPositionedObject } from './objects.js'
 
 window.addEventListener('load', async () => {
 	const display = <HTMLCanvasElement>document.getElementById('display')
@@ -14,8 +8,12 @@ window.addEventListener('load', async () => {
 		canvas: display,
 		settings: {
 			backgroundColor: '#150E1C',
-			depthFunc: WebGL2RenderingContext.LEQUAL,
-			enable: [WebGL2RenderingContext.DEPTH_TEST],
+			premultipliedAlpha: false,
+			enable: [WebGL2RenderingContext.BLEND],
+			blendFunc: [
+				WebGL2RenderingContext.SRC_ALPHA,
+				WebGL2RenderingContext.ONE_MINUS_SRC_ALPHA
+			],
 			viewport: { x: 0, y: 0, width: 1, height: 1 }
 		}
 	});
@@ -37,85 +35,103 @@ window.addEventListener('load', async () => {
 		scene.resize()
 	}
 
-	/* const sun = new WOneColorObject(scene, '#FF0', [[
-		[.5, .866, 0],
-		[1, 0, 0],
-		[.5, -.866, 0],
-	], [
-		[-.5, .866, 0],
-		[-1, 0, 0],
-		[-.5, -.866, 0],
-	], [
-		[-.5, .866, 0],
-		[-.5, -.866, 0],
-		[.5, -.866, 0],
-	], [
-		[.5, -.866, 0],
-		[.5, .866, 0],
-		[-.5, .866, 0],
-	]]) */
-
-	/* const earth = new WOneColorObject(scene, '#01629c', [[
-		[-.588, -.809, 0],
-		[0, 1, 0],
-		[-.951, .309, 0],
-	], [
-		[.588, -.809, 0],
-		[0, 1, 0],
-		[.951, .309, 0],
-	], [
-		[-.588, -.809, 0],
-		[0, 1, 0],
-		[.588, -.809, 0],
-	]]) */
-
-	const lines = new LinesObject({
+	scene.addObject('obj1', new WPositionedObject({
 		scene,
-		width: .01,
-		lines: [
+		shaders: [{
+			source: `#version 300 es
+			precision mediump float;
+
+			in vec3 i_vertexPosition;
+			in float i_opacity;
+
+			out float v_opacity;
+
+			 void main() {
+				gl_Position = vec4(i_vertexPosition, 1);
+				v_opacity = i_opacity;
+			}`,
+			type: 'VERTEX_SHADER'
+		}, {
+			source: `#version 300 es
+			precision mediump float;
+
+			in float v_opacity;
+
+			out vec4 o_fragColor;
+
+			void main() {
+				o_fragColor = vec4(.98, 0.73, 0, v_opacity);
+			}`,
+			type: 'FRAGMENT_SHADER'
+		}],
+		tris: [
 			[
-				[.1, 0, 0],
-				[.9, 0, 0]
+				[.8, 1, 0],
+				[.8, -1, 0],
+				[-1, 1, 0]
 			], [
-				[.8, 0, 0],
-				[0, -1, 0]
+				[-1, 1, 0],
+				[-1, -1, 0],
+				[.8, -1, 0]
 			]
-		]
-	})
+		],
+		attributes: {
+			'i_opacity': {
+				data: Float32Array.of(0, 0, 1, 1, 1, 0),
+				type: 'FLOAT',
+				length: 1
+			}
+		}
+	}))
 
-	const circle = new CircleObject({
+	scene.addObject('obj2', new WPositionedObject({
 		scene,
-		innerR: .05,
-		outerR: .1,
-		position: [.5, .5, 0]
-	})
+		shaders: [{
+			source: `#version 300 es
+			precision mediump float;
 
-	/* const moon = new WOneColorObject(scene, '#F4F6F0', [[
-		[1, 1, 0],
-		[1, -1, 0],
-		[-1, -1, 0],
-	], [
-		[-1, -1, 0],
-		[-1, 1, 0],
-		[1, 1, 0],
-	]]) */
+			in vec3 i_vertexPosition;
+			in float i_opacity;
 
-	// scene.addObject('sun', sun)
-	// scene.addObject('earth', earth)
-	scene.addObject('points', lines)
-	scene.addObject('circle', circle)
-	// scene.addObject('moon', moon)
+			out float v_opacity;
 
-	// sun.physics.scale = vec2(.2)
-	// sun.physics.mass = Infinity
+			 void main() {
+				gl_Position = vec4(i_vertexPosition, 1);
+				v_opacity = i_opacity;
+			}`,
+			type: 'VERTEX_SHADER'
+		}, {
+			source: `#version 300 es
+			precision mediump float;
 
-	// earth.physics.move(vec2(-.5, .5))
-	// earth.physics.scale = vec2(.1)
-	// earth.physics.mass = 1000
+			in float v_opacity;
 
-	// moon.physics.move(vec2(0, .5))
-	// moon.physics.scale = vec2(0.05)
-	// moon.physics.mass = 50
+			out vec4 o_fragColor;
+
+			void main() {
+				o_fragColor = vec4(0, .1, .9, v_opacity);
+			}`,
+			type: 'FRAGMENT_SHADER'
+		}],
+		tris: [
+			[
+				[1, .8, -.1],
+				[1, -1, -.1],
+				[-1, .8, -.1]
+			], [
+				[-1, .8, -.1],
+				[-1, -1, -.1],
+				[1, -1, -.1],
+			]
+		],
+		attributes: {
+			'i_opacity': {
+				data: Float32Array.of(0, 1, 0, 0, 1, 1),
+				type: 'FLOAT',
+				length: 1
+			}
+		}
+	}))
 
 	window.addEventListener('resize', resize)
 	resize()
@@ -124,63 +140,10 @@ window.addEventListener('load', async () => {
 
 	let lastTime = -1
 
-	/* const seqAnimX = new TimedAnimationSequence({
-		offset: earth.physics.position.x,
-		t0: 0,
-		dur: 8,
-		animations: [
-			{ anim: new Animation() },
-			{ anim: new Blank(1) },
-			{ anim: new Animation({
-				x0: 1,
-				dx: -1,
-				func: bezier(.17, .9, .87, .2)(100)
-			}) },
-			{ anim: new Animation({
-				func: t => -Math.sin(t * 9 * Math.PI) * .1
-			}) }
-		]
-	}) */
-
-	/* const seqAnimY = new TimedAnimationSequence({
-		offset: earth.physics.position.y,
-		t0: 2,
-		dur: 6,
-		animations: [
-			{ anim: new Animation({
-				dx: -1,
-				func: t => +(t == 1)
-			}) },
-			{ anim: new Blank(-1) },
-			{ anim: new Animation({ x0: -1 }) }
-		]
-	}) */
-
-	// scene.addAnimation(seqAnimX, seqAnimY)
-
-	/* const loop = (t: number, max: number) => {
-		if (t > max) return loop(t - max, max)
-		if (t < 0) return loop(t + max, max)
-		return t
-	} */
-
-	// let t = 0
-
 	const draw = globalThis.draw = (time: number) => {
 		if (lastTime < 0) lastTime = time
 		const dt = (time - lastTime) / 1000;
 		lastTime = time;
-		
-		// sun.physics.rotation -= dt
-		// earth.physics.rotation += 1.5 * dt
-		// moon.physics.rotation -= 2 * dt
-
-		// t = loop(t + dt, 8)
-
-		// scene.updateAnimations(t)
-
-		// earth.physics.position.x = seqAnimX.value
-		// earth.physics.position.y = seqAnimY.value
 
 		scene.updatePositions(dt)
 
@@ -195,7 +158,8 @@ window.addEventListener('load', async () => {
 ////Create matrix classes
 ////Expand objects to physics rules
 ////Add simple element shapes
-//* Implement physic bonds system
+////Fix transparency
+//* Implement object modifiers system
 ////Create animation invoker system
 // Test with "The Lantern"
 // Implement colliders

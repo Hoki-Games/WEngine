@@ -124,6 +124,8 @@ export class WScene {
 		this.gl.depthFunc(this.settings.depthFunc);
 		this.gl.blendFunc(...this.settings.blendFunc)
 
+		this.gl.blendFunc(...this.settings.blendFunc)
+
 		this.resize()
 
 		for (const name in this.objects) {
@@ -172,6 +174,14 @@ export class WScene {
 				this.objects[name] = arg1[name]
 			}
 		}
+	}
+
+	removeObject(...name: string[]) {
+		name.forEach(v => delete this.objects[v])
+	}
+
+	clearObjects() {
+		this.objects = {}
 	}
 
 	addAnimation(...animations: Timed[]) {

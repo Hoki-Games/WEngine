@@ -42,6 +42,7 @@
             {
                 "allowedNames": ["me"]
             }
-        ]
+        ],
+        "no-constant-condition": "off"
     }
 }

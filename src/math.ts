@@ -46,11 +46,13 @@ export const narrowColor = (color: WColor): WVec4<GLclampf> => {
 		const rgba8 = new RegExp(`^#${b8}?$`).exec(color)
 
 		if (rgba4) ret = 
-			<WVec4<GLclampf>>rgba4.slice(1).map(v => parseInt(v, 16) / 16)
+			<WVec4<GLclampf>>rgba4.slice(1).map(v => parseInt(v, 16) / 15)
 		else if (rgba8) ret = 
 			<WVec4<GLclampf>>rgba8.slice(1).map(v => parseInt(v, 16) / 255)
 		else throw new Error('Invalid color data', { cause: color })
 	}
+
+	if (Number.isNaN(ret[3])) ret[3] = 1
 
 	return ret
 }

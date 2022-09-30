@@ -474,11 +474,13 @@ export class LinesObject extends WOneColorObject {
 	constructor({
 		scene,
 		lines,
-		width = .1
+		width = .1,
+		color = '#000'
 	}: {
 		scene: WScene
 		lines: WLine3<number>[]
 		width?: number
+		color?: WColor
 	}) {
 		const verts: WTri3<number>[] = []
 
@@ -502,26 +504,28 @@ export class LinesObject extends WOneColorObject {
 			])
 		}
 
-		super(scene, [0, 0, 1, 1], verts)
+		super(scene, color, verts)
 	}
 }
 
 export class CircleObject extends WPositionedObject {
-	innerR: number
-	outerR: number
+	color: Float32Array
 
 	constructor({
 		scene,
 		innerR = 0,
-		outerR,
-		position
-
+		position,
+		scale = 1,
+		color = '#000'
 	}: {
 		scene: WScene
 		innerR?: number,
-		outerR: number,
 		position: WVec3<number>
+		scale?: number
+		color?: WColor
 	}) {
+		const clr = Float32Array.from(narrowColor(color))
+
 		super({
 			scene,
 			shaders: [{
@@ -559,13 +563,14 @@ export class CircleObject extends WPositionedObject {
 				precision mediump float;
 
 				uniform float u_innerRadius;
+				uniform vec4 u_color;
 
 				in vec2 v_uvmap;
 
 				out vec4 o_fragColor;
 
 				void main() {
-					o_fragColor = vec4(1, 1, 1, 1);
+					o_fragColor = u_color;
 					float kat1 = pow(v_uvmap.x, 2.);
 					float kat2 = pow(v_uvmap.y, 2.);
 					float dist = sqrt(kat1 + kat2);
@@ -574,7 +579,9 @@ export class CircleObject extends WPositionedObject {
 				type: 'FRAGMENT_SHADER'
 			}],
 			uniforms: {
-				'u_innerRadius': Float32Array.of(innerR / outerR)
+				// TODO: Make adjustable
+				'u_innerRadius': Float32Array.of(innerR / scale),
+				'u_color': clr
 			},
 			attributes: {
 				'i_uvmap': {
@@ -593,16 +600,21 @@ export class CircleObject extends WPositionedObject {
 			},
 			tris: [
 				[
-					[position[0] + outerR, position[1] + outerR, position[2]],
-					[position[0] - outerR, position[1] - outerR, position[2]],
-					[position[0] - outerR, position[1] + outerR, position[2]]
+					[1, 1, position[2]],
+					[-1, -1, position[2]],
+					[-1, 1, position[2]]
 				], [
-					[position[0] + outerR, position[1] + outerR, position[2]],
-					[position[0] + outerR, position[1] - outerR, position[2]],
-					[position[0] - outerR, position[1] - outerR, position[2]]
+					[1, 1, position[2]],
+					[1, -1, position[2]],
+					[-1, -1, position[2]]
 				]
-			]
+			],
+			physicsModel: new WPhysicsModel({
+				position: vec2(position[0], position[1]),
+				scale: vec2(scale)
+			})
 		})
 
+		this.color = clr
 	}
 }

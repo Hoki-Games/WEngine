@@ -139,20 +139,28 @@ export class WScene {
 			WebGL2RenderingContext.DEPTH_BUFFER_BIT
 		);
 
-		for (const name in this.objects) {
-			this.objects[name].draw()
-		}
+		Object.values(this.objects)
+			.sort((a, b) => b.zIndex - a.zIndex)
+			.forEach(v => v.draw())
 	}
 
 	resize() {
 		this.gl.viewport(...this.settings.viewport)
 	}
 
-	updatePositions(dt: number) {
+	updateLocations(dt: number) {
 		for (const name in this.objects) {
 			const obj = this.objects[name]
 			if (obj instanceof WPositionedObject)
-				obj.physics.updatePosition(dt)
+				obj.physics.updateLocation(dt)
+		}
+	}
+
+	updateGlobals() {
+		for (const name in this.objects) {
+			const obj = this.objects[name]
+			if (obj instanceof WPositionedObject)
+				obj.physics.updateGlobalLocation()
 		}
 	}
 

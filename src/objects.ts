@@ -12,16 +12,16 @@ import {
 	narrowColor,
 	vec2,
 	WColor,
-	WVec3,
-	WLine3,
 	WTri2,
-	WTri3
+	WVec2,
+	WLine2
 } from './math.js'
 
 import { WPhysicsModel } from './physics.js';
 
 export interface BasicObject {
 	renderer: WRenderer
+	zIndex: number
 
 	init(): void
 	draw(): void
@@ -31,6 +31,7 @@ export class CustomObject implements BasicObject {
 	#drawMode: GLenum
 
 	renderer: WRenderer
+	zIndex: number
 
 	protected _vertsCount: number
 	protected _attributes: Record<string, WAttributeData>
@@ -47,7 +48,8 @@ export class CustomObject implements BasicObject {
 		textures = [],
 		shaders,
 		vertsCount,
-		drawMode = WebGL2RenderingContext.TRIANGLES
+		drawMode = WebGL2RenderingContext.TRIANGLES,
+		zIndex = 0
 	}: {
 		scene: WScene
 		attributes?: Record<string, WAttributeData>
@@ -57,14 +59,16 @@ export class CustomObject implements BasicObject {
 			settings?: WTexSettings
 		}[]
 		shaders: WShader[]
-		vertsCount: number,
+		vertsCount: number
 		drawMode?: GLenum
+		zIndex?: number
 	}) {
 		this._attributes = attributes
 		this._uniforms = uniforms
 		this._textures = textures
 		this._vertsCount = vertsCount
 		this.#drawMode = drawMode
+		this.zIndex = zIndex
 
 		this.renderer = new WRenderer({ scene, shaders })
 	}
@@ -130,12 +134,13 @@ export class WPositionedObject extends CustomObject {
 
 	constructor({
 		scene,
-		uniforms = {},
-		attributes = {},
-		textures = [],
+		uniforms,
+		attributes,
+		textures,
 		shaders,
 		tris,
-		physicsModel = new WPhysicsModel()
+		physicsModel = new WPhysicsModel(),
+		zIndex
 	}: {
 		scene: WScene
 		attributes?: Record<string, WAttributeData>
@@ -145,11 +150,13 @@ export class WPositionedObject extends CustomObject {
 			settings?: WTexSettings
 		}[]
 		shaders: WShader[]
-		tris: WTri3<GLfloat>[]
+		tris: WTri2<GLfloat>[]
 		physicsModel?: WPhysicsModel
+		zIndex?: number
 	}) {
 		super({
 			scene,
+			zIndex,
 			uniforms,
 			attributes,
 			textures,
@@ -165,52 +172,52 @@ export class WPositionedObject extends CustomObject {
 			'i_vertexPosition',
 			this._tris.buffer,
 			'FLOAT',
-			3
+			2
 		)
 		
 		this.updateTriangles()
 	}
 
 	getTriangle(id: number) {
-		const arr = new Float32Array(this._tris.buffer, 36 * id, 9)
+		const arr = new Float32Array(this._tris.buffer, 24 * id, 6)
 
-		return <WTri3<GLfloat>>[
-			[arr[0], arr[1], arr[2]],
-			[arr[3], arr[4], arr[5]],
-			[arr[6], arr[7], arr[8]]
+		return <WTri2<GLfloat>>[
+			[arr[0], arr[1]],
+			[arr[2], arr[3]],
+			[arr[4], arr[5]]
 		]
 	}
 
-	setTriangle(id: number, triangle: WTri3<GLfloat>) {
-		if (id < 0 || id >= this._vertsCount / 3) return false
+	setTriangle(id: number, triangle: WTri2<GLfloat>) {
+		if (id < 0 || id >= this._vertsCount / 2) return false
 
-		this._tris.set(triangle.flat(2), id * 9)
+		this._tris.set(triangle.flat(2), id * 6)
 
 		this.updateTriangles()
 		return true
 	}
 
-	addTriangle(triangle: WTri3<GLfloat>) {
-		const arr = new Float32Array((this._vertsCount / 3 + 1) * 9)
+	addTriangle(triangle: WTri2<GLfloat>) {
+		const arr = new Float32Array((this._vertsCount / 2 + 1) * 6)
 		arr.set(new Float32Array(this._tris.buffer))
-		arr.set(Float32Array.from(triangle.flat(2)), this._vertsCount * 3)
+		arr.set(Float32Array.from(triangle.flat(2)), this._vertsCount * 2)
 
 		this._tris = arr
 
 		this.updateTriangles()
-		return this._vertsCount / 3 - 1
+		return this._vertsCount / 2 - 1
 	}
 
 	removeTriangle(id: number) {
-		if (id < 0 || id >= this._vertsCount / 3) return false
+		if (id < 0 || id >= this._vertsCount / 2) return false
 		
-		const arr = new Float32Array((this._vertsCount / 3 - 1) * 9)
-		arr.set(new Float32Array(this._tris.buffer, 0, id * 9))
+		const arr = new Float32Array((this._vertsCount / 2 - 1) * 6)
+		arr.set(new Float32Array(this._tris.buffer, 0, id * 6))
 		arr.set(new Float32Array(
 			this._tris.buffer,
-			(id + 1) * 36,
-			(this._vertsCount / 3 - 1 - id) * 9
-		), id * 9)
+			(id + 1) * 24,
+			(this._vertsCount / 2 - 1 - id) * 6
+		), id * 6)
 
 		this._tris = arr
 
@@ -219,7 +226,7 @@ export class WPositionedObject extends CustomObject {
 	}
 
 	updateTriangles() {
-		this._vertsCount = this._tris.byteLength / 12
+		this._vertsCount = this._tris.byteLength / 8
 
 		this.renderer.updateAttribute('i_vertexPosition')
 	}
@@ -229,7 +236,7 @@ export class WPositionedObject extends CustomObject {
 	}
 	set physics(v) {
 		this.#physics = v
-		this.setUniform('u_transform', v.array, '3')
+		this.setUniform('u_transform', v.global, '3')
 	}
 
 	get ratio() {
@@ -244,7 +251,12 @@ export class WPositionedObject extends CustomObject {
 export class WOneColorObject extends WPositionedObject {
 	color: Float32Array
 	
-	constructor(scene: WScene, color: WColor, tris: WTri3<GLfloat>[]) {
+	constructor(
+		scene: WScene,
+		color: WColor,
+		tris: WTri2<GLfloat>[],
+		zIndex?: number
+	) {
 		const clr = Float32Array.from(narrowColor(color))
 
 		super({
@@ -257,22 +269,21 @@ export class WOneColorObject extends WPositionedObject {
 				uniform mat3 u_transform;
 				uniform float u_ratio;
 
-				in vec3 i_vertexPosition;
+				in vec2 i_vertexPosition;
 
-				vec3 transform(vec3 v) {
-					vec3 pos = vec3(vec2(v) - u_origin, 1);
-					pos = u_transform * pos;
-					pos = pos + vec3(u_origin, 0);
-					pos.z = v.z;
+				vec2 transform(vec2 v) {
+					vec3 pos = vec3(v - u_origin, 1);
+					pos *= u_transform;
+					pos += vec3(u_origin, 0);
 					if (u_ratio != .0) {
 						pos.x /= u_ratio;
 					}
-					return pos;
+					return vec2(pos);
 				}
 
 				void main() {
-					vec3 pos = transform(i_vertexPosition);
-					gl_Position = vec4(pos, 1);
+					vec2 pos = transform(i_vertexPosition);
+					gl_Position = vec4(pos, 0, 1);
 				}`,
 				type: 'VERTEX_SHADER'
 			}, {
@@ -291,7 +302,8 @@ export class WOneColorObject extends WPositionedObject {
 			uniforms: {
 				'u_color': clr
 			},
-			tris
+			tris,
+			zIndex
 		})
 
 		this.color = clr
@@ -303,12 +315,13 @@ export class WTexPositionedObject extends WPositionedObject {
 
 	constructor({
 		scene,
-		uniforms = {},
-		attributes = {},
-		textures = [],
+		uniforms,
+		attributes,
+		textures,
 		shaders,
 		tris,
-		uvmap
+		uvmap,
+		zIndex
 	}: {
 		scene: WScene
 		attributes?: Record<string, WAttributeData>
@@ -318,8 +331,9 @@ export class WTexPositionedObject extends WPositionedObject {
 			settings?: WTexSettings
 		}[]
 		shaders: WShader[]
-		tris: WTri3<GLfloat>[]
+		tris: WTri2<GLfloat>[]
 		uvmap: WTri2<GLfloat>[]
+		zIndex?: number
 	}) {
 		super({
 			scene,
@@ -327,7 +341,8 @@ export class WTexPositionedObject extends WPositionedObject {
 			attributes,
 			textures,
 			shaders,
-			tris
+			tris,
+			zIndex
 		})
 
 		this._uvmap = Float32Array.from(uvmap.flat(2))
@@ -400,8 +415,9 @@ export class WTextureObject extends WTexPositionedObject {
 	constructor(
 		img: TexImageSource,
 		scene: WScene,
-		tris: WTri3<GLfloat>[],
-		uvmap: WTri2<GLfloat>[]
+		tris: WTri2<GLfloat>[],
+		uvmap: WTri2<GLfloat>[],
+		zIndex?: number
 	) {
 		super({
 			scene,
@@ -412,23 +428,25 @@ export class WTextureObject extends WTexPositionedObject {
 				uniform vec2 u_origin;
 				uniform mat3 u_transform;
 
-				in vec3 i_vertexPosition;
+				in vec2 i_vertexPosition;
 				in vec2 i_uvmap;
 
 				out vec2 v_uvmap;
 
-				vec3 transform(vec3 v) {
-					vec3 pos = vec3(vec2(v) - u_origin, 1);
-					pos = u_transform * pos;
-					pos = pos + vec3(u_origin, 0);
-					pos.z = v.z;
-					return pos;
+				vec2 transform(vec2 v) {
+					vec3 pos = vec3(v - u_origin, 1);
+					pos *= u_transform;
+					pos += vec3(u_origin, 0);
+					if (u_ratio != .0) {
+						pos.x /= u_ratio;
+					}
+					return vec2(pos);
 				}
 
 				void main() {
-					vec3 pos = transform(i_vertexPosition);
+					vec2 pos = transform(i_vertexPosition);
 					v_uvmap = i_uvmap;
-					gl_Position = vec4(pos, 1);
+					gl_Position = vec4(pos, 0, 1);
 				}`,
 				type: 'VERTEX_SHADER'
 			}, {
@@ -463,7 +481,8 @@ export class WTextureObject extends WTexPositionedObject {
 				}
 			}],
 			tris,
-			uvmap
+			uvmap,
+			zIndex
 		})
 
 		this.img = img;
@@ -475,36 +494,38 @@ export class LinesObject extends WOneColorObject {
 		scene,
 		lines,
 		width = .1,
-		color = '#000'
+		color = '#000',
+		zIndex
 	}: {
 		scene: WScene
-		lines: WLine3<number>[]
+		lines: WLine2<number>[]
 		width?: number
-		color?: WColor
+		color?: WColor,
+		zIndex?: number
 	}) {
-		const verts: WTri3<number>[] = []
+		const verts: WTri2<number>[] = []
 
 		for (const line of lines) {
-			const v1 = vec2(line[0][0], line[0][1])
-			const v2 = vec2(line[1][0], line[1][1])
+			const v1 = vec2(...line[0])
+			const v2 = vec2(...line[1])
 			const a = v2.dif(v1)
 			const b = a.right
 			const c = b.scale(width / b.length)
 
 			verts.push(<never>[
-				[...v2.dif(c), line[1][2]],
-				[...v1.sum(c), line[0][2]],
-				[...v1.dif(c), line[0][2]]
+				v2.dif(c),
+				v1.sum(c),
+				v1.dif(c)
 			])
 
 			verts.push(<never>[
-				[...v2.dif(c), line[1][2]],
-				[...v2.sum(c), line[1][2]],
-				[...v1.sum(c), line[0][2]]
+				v2.dif(c),
+				v2.sum(c),
+				v1.sum(c)
 			])
 		}
 
-		super(scene, color, verts)
+		super(scene, color, verts, zIndex)
 	}
 }
 
@@ -514,15 +535,17 @@ export class CircleObject extends WPositionedObject {
 	constructor({
 		scene,
 		innerR = 0,
-		position,
+		location,
 		scale = 1,
-		color = '#000'
+		color = '#000',
+		zIndex
 	}: {
 		scene: WScene
 		innerR?: number,
-		position: WVec3<number>
+		location: WVec2<number>
 		scale?: number
 		color?: WColor
+		zIndex?: number
 	}) {
 		const clr = Float32Array.from(narrowColor(color))
 
@@ -536,26 +559,25 @@ export class CircleObject extends WPositionedObject {
 				uniform mat3 u_transform;
 				uniform float u_ratio;
 
-				in vec3 i_vertexPosition;
+				in vec2 i_vertexPosition;
 				in vec2 i_uvmap;
 
 				out vec2 v_uvmap;
 
-				vec3 transform(vec3 v) {
-					vec3 pos = vec3(vec2(v) - u_origin, 1);
-					pos = u_transform * pos;
-					pos = pos + vec3(u_origin, 0);
-					pos.z = v.z;
+				vec2 transform(vec2 v) {
+					vec3 pos = vec3(v - u_origin, 1);
+					pos *= u_transform;
+					pos += vec3(u_origin, 0);
 					if (u_ratio != .0) {
 						pos.x /= u_ratio;
 					}
-					return pos;
+					return vec2(pos);
 				}
 
 				void main() {
 					v_uvmap = i_uvmap;
-					vec3 pos = transform(i_vertexPosition);
-					gl_Position = vec4(pos, 1);
+					vec2 pos = transform(i_vertexPosition);
+					gl_Position = vec4(pos, 0, 1);
 				}`,
 				type: 'VERTEX_SHADER'
 			}, {
@@ -579,8 +601,7 @@ export class CircleObject extends WPositionedObject {
 				type: 'FRAGMENT_SHADER'
 			}],
 			uniforms: {
-				// TODO: Make adjustable
-				'u_innerRadius': Float32Array.of(innerR / scale),
+				'u_innerRadius': Float32Array.of(innerR),
 				'u_color': clr
 			},
 			attributes: {
@@ -600,19 +621,20 @@ export class CircleObject extends WPositionedObject {
 			},
 			tris: [
 				[
-					[1, 1, position[2]],
-					[-1, -1, position[2]],
-					[-1, 1, position[2]]
+					[1, 1],
+					[-1, -1],
+					[-1, 1]
 				], [
-					[1, 1, position[2]],
-					[1, -1, position[2]],
-					[-1, -1, position[2]]
+					[1, 1],
+					[1, -1],
+					[-1, -1]
 				]
 			],
 			physicsModel: new WPhysicsModel({
-				position: vec2(position[0], position[1]),
+				location: vec2(...location),
 				scale: vec2(scale)
-			})
+			}),
+			zIndex
 		})
 
 		this.color = clr

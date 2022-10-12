@@ -1,5 +1,7 @@
 import { WScene } from './graphics.js'
-import { WPositionedObject } from './objects.js'
+import { WOneColorObject, WPositionedObject } from './objects.js'
+import { CopyLocationConstraint, CopyRotationConstraint } from './physics.js';
+import { RegularPolygon } from './shapes.js';
 
 window.addEventListener('load', async () => {
 	const display = <HTMLCanvasElement>document.getElementById('display')
@@ -35,103 +37,69 @@ window.addEventListener('load', async () => {
 		scene.resize()
 	}
 
-	scene.addObject('obj1', new WPositionedObject({
-		scene,
-		shaders: [{
-			source: `#version 300 es
-			precision mediump float;
+	const hex = new RegularPolygon({
+		radius: .25,
+		vertexCount: 6
+	})
 
-			in vec3 i_vertexPosition;
-			in float i_opacity;
+	const pent = new RegularPolygon({
+		radius: .50,
+		vertexCount: 5
+	})
+	scene.addObject('hex', new WOneColorObject(scene, '#03fcc6', <never>[[
+		[...hex.vertices[0]],
+		[...hex.vertices[1]],
+		[...hex.vertices[5]]
+	], [
+		[...hex.vertices[5]],
+		[...hex.vertices[1]],
+		[...hex.vertices[4]]
+	], [
+		[...hex.vertices[1]],
+		[...hex.vertices[2]],
+		[...hex.vertices[4]]
+	], [
+		[...hex.vertices[4]],
+		[...hex.vertices[2]],
+		[...hex.vertices[3]]
+	]], 0))
 
-			out float v_opacity;
+	scene.addObject('pent', new WOneColorObject(scene, '#5ab03f', <never>[[
+		[...pent.vertices[0]],
+		[...pent.vertices[2]],
+		[...pent.vertices[1]]
+	], [
+		[...pent.vertices[0]],
+		[...pent.vertices[3]],
+		[...pent.vertices[2]]
+	], [
+		[...pent.vertices[0]],
+		[...pent.vertices[4]],
+		[...pent.vertices[3]]
+	]], 1))
 
-			 void main() {
-				gl_Position = vec4(i_vertexPosition, 1);
-				v_opacity = i_opacity;
-			}`,
-			type: 'VERTEX_SHADER'
-		}, {
-			source: `#version 300 es
-			precision mediump float;
-
-			in float v_opacity;
-
-			out vec4 o_fragColor;
-
-			void main() {
-				o_fragColor = vec4(.98, 0.73, 0, v_opacity);
-			}`,
-			type: 'FRAGMENT_SHADER'
-		}],
-		tris: [
-			[
-				[.8, 1, 0],
-				[.8, -1, 0],
-				[-1, 1, 0]
-			], [
-				[-1, 1, 0],
-				[-1, -1, 0],
-				[.8, -1, 0]
-			]
-		],
-		attributes: {
-			'i_opacity': {
-				data: Float32Array.of(0, 0, 1, 1, 1, 0),
-				type: 'FLOAT',
-				length: 1
-			}
+	const copLoc = globalThis.copLoc = new CopyLocationConstraint(
+		(<WPositionedObject>scene.objects.pent).physics,
+		(<WPositionedObject>scene.objects.hex).physics,
+		{
+			axes: [true, true],
+			invert: [false, false],
+			offset: false,
+			ownerRelativity: 'global',
+			targetRelativity: 'global'
 		}
-	}))
+	)
 
-	scene.addObject('obj2', new WPositionedObject({
-		scene,
-		shaders: [{
-			source: `#version 300 es
-			precision mediump float;
-
-			in vec3 i_vertexPosition;
-			in float i_opacity;
-
-			out float v_opacity;
-
-			 void main() {
-				gl_Position = vec4(i_vertexPosition, 1);
-				v_opacity = i_opacity;
-			}`,
-			type: 'VERTEX_SHADER'
-		}, {
-			source: `#version 300 es
-			precision mediump float;
-
-			in float v_opacity;
-
-			out vec4 o_fragColor;
-
-			void main() {
-				o_fragColor = vec4(0, .1, .9, v_opacity);
-			}`,
-			type: 'FRAGMENT_SHADER'
-		}],
-		tris: [
-			[
-				[1, .8, -.1],
-				[1, -1, -.1],
-				[-1, .8, -.1]
-			], [
-				[-1, .8, -.1],
-				[-1, -1, -.1],
-				[1, -1, -.1],
-			]
-		],
-		attributes: {
-			'i_opacity': {
-				data: Float32Array.of(0, 1, 0, 0, 1, 1),
-				type: 'FLOAT',
-				length: 1
-			}
+	const copRot = globalThis.copRot = new CopyRotationConstraint(
+		(<WPositionedObject>scene.objects.pent).physics,
+		(<WPositionedObject>scene.objects.hex).physics,
+		{
+			invert: false,
+			offset: false,
+			ownerRelativity: 'global',
+			targetRelativity: 'global'
 		}
-	}))
+	)
 
 	window.addEventListener('resize', resize)
 	resize()
@@ -145,7 +113,12 @@ window.addEventListener('load', async () => {
 		const dt = (time - lastTime) / 1000;
 		lastTime = time;
 
-		scene.updatePositions(dt)
+		scene.updateLocations(dt)
+
+		copLoc.solve()
+		copRot.solve()
+
+		scene.updateGlobals()
 
 		scene.draw()
 
@@ -154,18 +127,3 @@ window.addEventListener('load', async () => {
 
 	requestAnimationFrame(draw)
 })
-//* Plans:
-////Create matrix classes
-////Expand objects to physics rules
-////Add simple element shapes
-////Fix transparency
-//* Implement object modifiers system
-////Create animation invoker system
-// Test with "The Lantern"
-// Implement colliders
-// Improve collision testing
-// Expand colliders with surface repultion logics
-
-
-// eslint-disable-next-line max-len
-// TODO: координатная сетка на фоне на ней единичный круг две точки ездят по нему (тягая мышкой), через них линии проходят (+координаты)

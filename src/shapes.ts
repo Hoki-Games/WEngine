@@ -1,60 +1,60 @@
 import { Vector2, vec2 } from "./math.js"
 
 export class Shape {
-	position: Vector2
+	location: Vector2
 	rotation: number
 	scale: Vector2
 
 	constructor({
-		position = vec2(0),
+		location: position = vec2(0),
 		rotation = 0,
 		scale = vec2(1)
 	}: {
-		position?: Vector2,
+		location?: Vector2,
 		rotation?: number,
 		scale?: Vector2
 	} = {}) {
-		this.position = position
+		this.location = position
 		this.rotation = rotation
 		this.scale = scale
 	}
 
 }
 
-class Circle extends Shape {
+export class Circle extends Shape {
 	radius: number
 
 	constructor({
-		position = vec2(0),
+		location = vec2(0),
 		rotation = 0,
 		scale = vec2(1),
 		radius = 1
 	}: {
-		position?: Vector2,
+		location?: Vector2,
 		rotation?: number,
 		scale?: Vector2,
 		radius?: number
 	} = {}) {
-		super({ position, rotation, scale })
+		super({ location, rotation, scale })
 		this.radius = radius
 	}
 }
 
-class Polygon extends Shape {
+export class Polygon extends Shape {
 	vertices: Vector2[]
 
 	constructor({
-		position = vec2(0),
+		location = vec2(0),
 		rotation = 0,
 		scale = vec2(1),
 		vertices
 	}: {
-		position?: Vector2,
+		location?: Vector2,
 		rotation?: number,
 		scale?: Vector2,
 		vertices: Vector2[]
 	}) {
-		super({ position, rotation, scale })
+		super({ location, rotation, scale })
 		if (vertices.length < 3) 
 			throw new Error('Polygon must have at least 3 vertices', {
 				cause: vertices
@@ -63,46 +63,48 @@ class Polygon extends Shape {
 	}
 }
 
-class RegularPolygon extends Polygon {
+export class RegularPolygon extends Polygon {
 	constructor({
-		position = vec2(0),
+		location = vec2(0),
 		rotation = 0,
-		scale = vec2(1),
 		vertexCount,
 		radius
 	}: {
-		position?: Vector2,
+		location?: Vector2,
 		rotation?: number,
 		scale?: Vector2,
 		vertexCount: number,
 		radius: number
 	}) {
 		const verts: Vector2[] = []
-		const dAng = PI2 / vertexCount
-		const ang = vertexCount % 2 ? PI_2 : (Math.PI - dAng) * .5
-		verts.push(
-			vertexCount % 2 ? vec2(0, radius) : Vector2.fromDegree(radius, ang))
+		const delta = PI2 / vertexCount
+		const theta = vertexCount % 2 ? 0 : delta * .5
+		const beta = PI_2 - theta
 
-		super({ position, rotation, scale, vertices: verts })
+		for (let i = 0; i < vertexCount; i++) {
+			verts.push(Vector2.fromDegree(beta + delta * i, radius))
+		}
+
+		super({ location, rotation, scale: vec2(1), vertices: verts })
 	}
 }
 
-class Rectangle extends Polygon {
+export class Rectangle extends Polygon {
 	constructor({
-		position = vec2(0),
+		location = vec2(0),
 		rotation = 0,
 		scale = vec2(1),
 		height,
 		width
 	}: {
-		position?: Vector2,
+		location?: Vector2,
 		rotation?: number,
 		scale?: Vector2,
 		width: number,
 		height: number
 	}) {
 		super({
-			position,
+			location,
 			rotation,
 			scale,
 			vertices: [
@@ -117,4 +119,3 @@ class Rectangle extends Polygon {
 
 const PI2 = Math.PI * 2
 const PI_2 = Math.PI * .5
-const center = vec2(500)

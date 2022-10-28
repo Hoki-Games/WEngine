@@ -1,4 +1,5 @@
 import { WScene } from './graphics.js';
+import { vec2 } from './math.js';
 import { WOneColorObject, WPositionedObject } from './objects.js';
 import { CopyLocationConstraint, CopyRotationConstraint, CopyScaleConstraint } from './physics.js';
 import { RegularPolygon } from './shapes.js';
@@ -31,11 +32,13 @@ window.addEventListener('load', async () => {
         scene.resize();
     };
     const hex = new RegularPolygon({
-        radius: .25,
+        // radius: .25,
+        radius: 1,
         vertexCount: 6
     });
     const pent = new RegularPolygon({
-        radius: .50,
+        // radius: .50,
+        radius: 1,
         vertexCount: 5
     });
     scene.addObject('hex', new WOneColorObject(scene, '#03fcc6', [[
@@ -68,6 +71,8 @@ window.addEventListener('load', async () => {
             [...pent.vertices[4]],
             [...pent.vertices[3]]
         ]], 1));
+    scene.objects['pent'].physics.scale = vec2(.5);
+    scene.objects['hex'].physics.scale = vec2(.25);
     const copLoc = globalThis.copLoc = new CopyLocationConstraint(scene.objects.pent.physics, scene.objects.hex.physics, {
         axes: [true, true],
         invert: [false, false],
@@ -96,9 +101,9 @@ window.addEventListener('load', async () => {
         const dt = (time - lastTime) / 1000;
         lastTime = time;
         scene.updateLocations(dt);
-        copLoc.solve();
-        copRot.solve();
-        copScale.solve();
+        // copLoc.solve()
+        // copRot.solve()
+        // copScale.solve()
         scene.updateGlobals();
         scene.draw();
         requestAnimationFrame(draw);

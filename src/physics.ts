@@ -1,7 +1,9 @@
-import { vec2, Vector2, WVec2, WVec3 } from './math.js'
+import { vec2, Vector2, WVec2 } from './math.js'
 import { Shape } from './shapes.js'
 
 export class WPhysicsModel extends Shape {
+	origin: Float32Array
+
 	global: Float32Array
 	globalLocation: Vector2
 	globalRotation: number
@@ -18,7 +20,8 @@ export class WPhysicsModel extends Shape {
 		scale = vec2(1),
 		mass = 1,
 		velocity = vec2(0),
-		acceleration = vec2(0)
+		acceleration = vec2(0),
+		origin = vec2(0)
 	}: {
 		location?: Vector2,
 		rotation?: number,
@@ -26,8 +29,11 @@ export class WPhysicsModel extends Shape {
 		mass?: number
 		velocity?: Vector2
 		acceleration?: Vector2
+		origin?: Vector2
 	} = {}) {
 		super({ location, rotation, scale })
+
+		this.origin = Float32Array.from(origin)
 
 		this.mass = mass
 		this.velocity = velocity
@@ -289,5 +295,140 @@ export class CopyRotationConstraint extends TargetConstraint {
 			: this.target.globalRotation
 
 		this.owner.globalRotation = t * i + ((this.offset) ? o : 0)
+	}
+}
+
+export class CopyScaleConstraint extends TargetConstraint {
+	axes: WVec2<boolean>
+	offset: boolean
+	ownerRelativity: 'local' | 'global'
+	targetRelativity: 'local' | 'global'
+
+	constructor(owner: WPhysicsModel, target: WPhysicsModel, {
+		axes = [true, true],
+		offset = false,
+		ownerRelativity = 'global',
+		targetRelativity = 'global'
+	}: {
+		axes?: WVec2<boolean>
+		offset?: boolean
+		ownerRelativity?: 'local' | 'global'
+		targetRelativity?: 'local' | 'global'
+	} = {}) {
+		super(owner, target)
+
+		this.axes = axes
+		this.offset = offset
+		this.ownerRelativity = ownerRelativity
+		this.targetRelativity = targetRelativity
+	}
+
+	solve() {
+		const o = this.ownerRelativity == 'local'
+			? this.owner.scale
+			: this.owner.globalScale
+
+		const t = this.targetRelativity == 'local'
+			? this.target.scale
+			: this.target.globalScale
+
+		if (this.axes[0]) {
+			this.owner.globalScale.x = t.x * (this.offset ? o.x : 1)
+		}
+	
+		if (this.axes[1]) {
+			this.owner.globalScale.y = t.y * (this.offset ? o.y : 1)
+		}
+	}
+}
+
+type transMixMode = 'replace' | 'before' | 'after' | 'split'
+export class CopyTransformsConstraint extends TargetConstraint {
+	#mixMode: transMixMode
+	#ownerRelativity: 'local' | 'global'
+	#targetRelativity: 'local' | 'global'
+	#loc: CopyLocationConstraint
+	#rot: CopyRotationConstraint
+	#scale: CopyScaleConstraint
+
+	constructor(owner: WPhysicsModel, target: WPhysicsModel, {
+		mixMode = 'replace',
+		ownerRelativity = 'global',
+		targetRelativity = 'global'
+	}: {
+		mixMode?: transMixMode
+		ownerRelativity?: 'local' | 'global'
+		targetRelativity?: 'local' | 'global'
+	} = {}) {
+		super(owner, target)
+
+		this.#loc = new CopyLocationConstraint(owner, target, {
+			ownerRelativity,
+			targetRelativity,
+			offset: false
+		})
+		this.#rot = new CopyRotationConstraint(owner, target, {
+			ownerRelativity,
+			targetRelativity,
+			offset: false
+		})
+		this.#scale = new CopyScaleConstraint(owner, target, {
+			ownerRelativity,
+			targetRelativity,
+			offset: false
+		})
+		
+		/*
+		scale x = sqrt(M11 * M11 + M12 * M12)
+
+		scale y = sqrt(M21 * M21 + M22 * M22) * cos(shear)
+	
+		rotation = atan2(M12, M11)
+	
+		shear (y) = atan2(M22, M21) - PI/2 - rotation
+	
+		translation x = M31
+	
+		translation y = M32
+		*/
+		// M1 = S * R * T; M1 * S2 = M1S2 * R2....
+		// O - (T1, R1, S1); T - (T2, R2, S2)
+		// replace:     S2 R2 T2
+		// beforeFull:  (S2 R2 T2) (S1 R1 T1)
+		// beforeSplit: T2 (R2 (S2 (S1 R1 T1)))
+		// afterFull:   (S1 R1 T1) (S2 R2 T2)
+		// afterSplit:  (((S1 R1 T1) S2) R2) T2
+		// O1: [S1 R1 T1]
+		// O2: [S2 R2 T2] [S1 R1 T1] => [S2* R2* T2*]
+		// O3: [S3 S2*] [R3 R2*] [T3 T2*]
+
+		/* this.mixMode = mixMode
+		this.ownerRelativity = ownerRelativity
+		this.targetRelativity = targetRelativity */
+	}
+
+	solve() {
+		switch (this.#mixMode) {
+		case 'replace':
+
+			break
+
+		case 'before':
+
+			break
+
+		case 'after':
+
+			break
+
+		case 'split':
+
+			break
+			
+		default:
+			
+		}
+
+		
 	}
 }

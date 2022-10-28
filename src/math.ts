@@ -324,60 +324,223 @@ export class WMatrix3 {
 }
 
 export class WTransformMatrix3 {
-	translate: Vector2
-	rotate: number
-	scale: Vector2
-	origin: Vector2
+	#translate: Vector2
+	#direct: Vector2
+	#skew: number
+	#scale: Vector2
+
+	#data = new Float32Array(9)
 
 	constructor({
 		translate = vec2(0),
 		rotate = 0,
-		scale = vec2(1),
-		origin = vec2(0)
+		skew = 0,
+		scale = vec2(1)
 	}: {
 		translate?: Vector2,
 		rotate?: number,
-		scale?: Vector2,
-		origin?: Vector2
-	}) {
-		this.translate = translate
-		this.rotate = rotate
-		this.scale = scale
-		this.origin = origin
+		skew?: number,
+		scale?: Vector2
+	} = {}) {
+		this.#translate = translate
+		this.#direct = Vector2.fromDegree(rotate)
+		this.#skew = Math.tan(skew)
+		this.#scale = scale
+
+		this.calcMatrix()
 	}
 
-	getMatrix() {
-		const [tx, ty] = this.translate
-		const [rx, ry] = Vector2.fromDegree(this.rotate)
-		const [sx, sy] = this.scale
+	calcMatrix() {
+		const [tx, ty] = this.#translate
+		const [rx, ry] = this.#direct
+		const [sx, sy] = this.#scale
+		const k = this.#skew
 
-		return new WMatrix3([
-			[1, 0, 0],
-			[0, 1, 0],
-			[tx, ty, 1]
-		]).mult(new WMatrix3([
-			[rx, ry, 0],
-			[-ry, rx, 0],
-			[0, 0, 1]
-		])).mult(new WMatrix3([
-			[sx, 0, 0],
-			[0, sy, 0],
-			[0, 0, 1]
-		]))
+		this.#data.set([
+			rx * sx, ry * sx, 0,
+			(rx * k - ry) * sy, (ry * k + rx) * sy, 0,
+			tx, ty, 1
+		])
+
+		return this
 	}
 
-	apply(v: Vector2 | WVec2<number>) {
-		let [x, y] = v
-		x -= this.origin.x
-		y -= this.origin.y
+	calcFields() {
+		const [m11, m12, , m21, m22, , m31, m32] = this.#data
 
-		const trans = this.getMatrix().get()
-		const dx = trans[0][0] * x + trans[1][0] * y + trans[2][0]
-		const dy = trans[0][1] * x + trans[1][1] * y + trans[2][1]
-		x = dx
-		y = dy
+		this.#direct = vec2(m11, m12).norm
+		
+		const sk = Math.atan2(m22, m21) - Math.PI / 2 - this.#direct.rotation
+		this.#skew = -Math.tan(sk)
+		
+		this.#scale.x = Math.sqrt(m11 ** 2 + m12 ** 2)
+		this.#scale.y = Math.sqrt(m21 ** 2 + m22 ** 2) * Math.cos(sk)
+		
+		this.#translate = vec2(m31, m32)
 
-		return this.origin.sum(vec2(x, y))
+		return this
+	}
+
+	translateX(x: number) {
+		this.#translate.x = x
+
+		return this.calcMatrix()
+	}
+
+	translateY(y: number) {
+		this.#translate.y = y
+
+		return this.calcMatrix()
+	}
+
+	translate(x: number, y: number) {
+		this.#translate = vec2(x, y)
+
+		return this.calcMatrix()
+	}
+
+	rotate(r: number): WTransformMatrix3
+	rotate(x: number, y: number): WTransformMatrix3
+	rotate(v0: number, v1?: number) {
+		if (v1 !== undefined) this.#direct = vec2(v0, v1).norm
+		else this.#direct = Vector2.fromDegree(v0)
+
+		return this.calcMatrix()
+	}
+
+	scaleX(sx: number) {
+		this.#scale.x = sx
+
+		return this.calcMatrix()
+	}
+
+	scaleY(sy: number) {
+		this.#scale.y = sy
+
+		return this.calcMatrix()
+	}
+
+	scale(sx: number, sy: number) {
+		this.#scale = vec2(sx, sy)
+
+		return this.calcMatrix()
+	}
+
+	skew(k: number) {
+		this.#skew = Math.tan(k)
+
+		return this.calcMatrix()
+	}
+
+	matrix(a = 1, b = 0, c = 0, d = 1, e = 0, f = 0) {
+		this.#data.set([
+			a, b, 0,
+			c, d, 0,
+			e, f, 1
+		])
+
+		return this.calcFields()
+	}
+
+	get tx() {
+		return this.#translate.x
+	}
+
+	get ty() {
+		return this.#translate.y
+	}
+
+	get t() {
+		return this.#translate.sum()
+	}
+
+	get r() {
+		return this.#direct.rotation
+	}
+
+	get sx() {
+		return this.#scale.x
+	}
+
+	get sy() {
+		return this.#scale.y
+	}
+
+	get s() {
+		return this.#scale.sum()
+	}
+
+	get k() {
+		return Math.atan(this.#skew)
+	}
+
+	get kt() {
+		return this.#skew
+	}
+
+	get m() {
+		const [a, b, , c, d, , e, f] = this.#data
+
+
+		return [a, b, c, d, e, f]
+	}
+	
+	get a() {
+		return this.#data[0]
+	}
+	set a(v: number) {
+		this.#data[0] = v
+
+		this.calcFields()
+	}
+
+	get b() {
+		return this.#data[1]
+	}
+	set b(v: number) {
+		this.#data[1] = v
+
+		this.calcFields()
+	}
+
+	get c() {
+		return this.#data[3]
+	}
+	set c(v: number) {
+		this.#data[3] = v
+
+		this.calcFields()
+	}
+
+	get d() {
+		return this.#data[4]
+	}
+	set d(v: number) {
+		this.#data[4] = v
+
+		this.calcFields()
+	}
+
+	get e() {
+		return this.#data[6]
+	}
+	set e(v: number) {
+		this.#data[6] = v
+
+		this.calcFields()
+	}
+
+	get f() {
+		return this.#data[7]
+	}
+	set f(v: number) {
+		this.#data[7] = v
+
+		this.calcFields()
+	}
+	
+	get buffer() {
+		return this.#data.buffer
 	}
 }
 

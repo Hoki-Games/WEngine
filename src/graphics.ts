@@ -228,7 +228,6 @@ const texParamMap = {
 	TEXTURE_MIN_LOD: 'texF'
 } as const
 
-// '2' | '2x3' | '2x4' | '3x2' | '3' | '3x4' | '4x2' | '4x3' | '4'
 const matrixDim = {
 	'2': 4,
 	'2x3': 6,
@@ -283,7 +282,7 @@ export class WRenderer {
 		gl.linkProgram(this.program)
 	}
 
-	init({
+	init({ //! Unsupported uniform matrices
 		uniforms = {},
 		attributes = {},
 		textures = []

@@ -1,6 +1,7 @@
 import { vec2, Vector2 } from './math.js';
 import { Shape } from './shapes.js';
 export class WPhysicsModel extends Shape {
+    origin;
     global;
     globalLocation;
     globalRotation;
@@ -9,8 +10,9 @@ export class WPhysicsModel extends Shape {
     acceleration; // m/s²
     force; // N (kg∙m/s²)
     mass; // kg
-    constructor({ location = vec2(0), rotation = 0, scale = vec2(1), mass = 1, velocity = vec2(0), acceleration = vec2(0) } = {}) {
+    constructor({ location = vec2(0), rotation = 0, scale = vec2(1), mass = 1, velocity = vec2(0), acceleration = vec2(0), origin = vec2(0) } = {}) {
         super({ location, rotation, scale });
+        this.origin = Float32Array.from(origin);
         this.mass = mass;
         this.velocity = velocity;
         this.acceleration = acceleration;
@@ -244,18 +246,18 @@ export class CopyTransformsConstraint extends TargetConstraint {
             offset: false
         });
         /*
-                scale x = sqrt(M11 * M11 + M12 * M12)
-        
-                scale y = sqrt(M21 * M21 + M22 * M22) * cos(shear)
-            
-                rotation = atan2(M12, M11)
-            
-                shear (y) = atan2(M22, M21) - PI/2 - rotation
-            
-                translation x = M31
-            
-                translation y = M32
-         */
+        scale x = sqrt(M11 * M11 + M12 * M12)
+
+        scale y = sqrt(M21 * M21 + M22 * M22) * cos(shear)
+    
+        rotation = atan2(M12, M11)
+    
+        shear (y) = atan2(M22, M21) - PI/2 - rotation
+    
+        translation x = M31
+    
+        translation y = M32
+        */
         // M1 = S * R * T; M1 * S2 = M1S2 * R2....
         // O - (T1, R1, S1); T - (T2, R2, S2)
         // replace:     S2 R2 T2

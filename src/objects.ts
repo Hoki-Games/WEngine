@@ -63,7 +63,7 @@ export class CustomObject implements BasicObject {
 		drawMode?: GLenum
 		zIndex?: number
 	}) {
-		this._attributes = attributes
+		this._attributes = attributes	
 		this._uniforms = uniforms
 		this._textures = textures
 		this._vertsCount = vertsCount
@@ -95,6 +95,11 @@ export class CustomObject implements BasicObject {
 		length: WAttributeData['length']
 	) {
 		this.renderer.setAttribute(name, value, type, length);
+		this._attributes[name] = {
+			data: value,
+			length,
+			type
+		}
 	}
 
 	getUniform(name: string) {
@@ -108,6 +113,7 @@ export class CustomObject implements BasicObject {
 		matrix?: WMatrixDim
 	) {
 		this.renderer.setUniform(name, <Float32Array>value, matrix);
+		this._uniforms[name] = value
 	}
 
 	getTexture(id: number) {
@@ -174,6 +180,8 @@ export class WPositionedObject extends CustomObject {
 			'FLOAT',
 			2
 		)
+
+		this.setUniform('u_origin', this.#physics.origin)
 		
 		this.updateTriangles()
 	}
@@ -273,7 +281,7 @@ export class WOneColorObject extends WPositionedObject {
 
 				vec2 transform(vec2 v) {
 					vec3 pos = vec3(v - u_origin, 1);
-					pos *= u_transform;
+					pos = u_transform * pos;
 					pos += vec3(u_origin, 0);
 					if (u_ratio != .0) {
 						pos.x /= u_ratio;
@@ -435,7 +443,7 @@ export class WTextureObject extends WTexPositionedObject {
 
 				vec2 transform(vec2 v) {
 					vec3 pos = vec3(v - u_origin, 1);
-					pos *= u_transform;
+					pos = u_transform * pos;
 					pos += vec3(u_origin, 0);
 					if (u_ratio != .0) {
 						pos.x /= u_ratio;
@@ -566,7 +574,7 @@ export class CircleObject extends WPositionedObject {
 
 				vec2 transform(vec2 v) {
 					vec3 pos = vec3(v - u_origin, 1);
-					pos *= u_transform;
+					pos = u_transform * pos;
 					pos += vec3(u_origin, 0);
 					if (u_ratio != .0) {
 						pos.x /= u_ratio;

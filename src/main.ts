@@ -1,6 +1,11 @@
 import { WScene } from './graphics.js'
+import { vec2 } from './math.js';
 import { WOneColorObject, WPositionedObject } from './objects.js'
-import { CopyLocationConstraint, CopyRotationConstraint } from './physics.js';
+import {
+	CopyLocationConstraint,
+	CopyRotationConstraint,
+	CopyScaleConstraint
+} from './physics.js';
 import { RegularPolygon } from './shapes.js';
 
 window.addEventListener('load', async () => {
@@ -38,14 +43,17 @@ window.addEventListener('load', async () => {
 	}
 
 	const hex = new RegularPolygon({
-		radius: .25,
+		// radius: .25,
+		radius: 1,
 		vertexCount: 6
 	})
 
 	const pent = new RegularPolygon({
-		radius: .50,
+		// radius: .50,
+		radius: 1,
 		vertexCount: 5
 	})
+
 	scene.addObject('hex', new WOneColorObject(scene, '#03fcc6', <never>[[
 		[...hex.vertices[0]],
 		[...hex.vertices[1]],
@@ -78,6 +86,9 @@ window.addEventListener('load', async () => {
 		[...pent.vertices[3]]
 	]], 1))
 
+	;(<WOneColorObject>scene.objects['pent']).physics.scale = vec2(.5)
+	;(<WOneColorObject>scene.objects['hex']).physics.scale = vec2(.25)
+
 	const copLoc = globalThis.copLoc = new CopyLocationConstraint(
 		(<WPositionedObject>scene.objects.pent).physics,
 		(<WPositionedObject>scene.objects.hex).physics,
@@ -101,6 +112,16 @@ window.addEventListener('load', async () => {
 		}
 	)
 
+	const copScale = globalThis.copScale = new CopyScaleConstraint(
+		(<WPositionedObject>scene.objects.pent).physics,
+		(<WPositionedObject>scene.objects.hex).physics,
+		{
+			offset: false,
+			ownerRelativity: 'global',
+			targetRelativity: 'global'
+		}
+	)
+
 	window.addEventListener('resize', resize)
 	resize()
 
@@ -115,8 +136,9 @@ window.addEventListener('load', async () => {
 
 		scene.updateLocations(dt)
 
-		copLoc.solve()
-		copRot.solve()
+		// copLoc.solve()
+		// copRot.solve()
+		// copScale.solve()
 
 		scene.updateGlobals()
 

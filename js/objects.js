@@ -33,12 +33,18 @@ export class CustomObject {
     }
     setAttribute(name, value, type, length) {
         this.renderer.setAttribute(name, value, type, length);
+        this._attributes[name] = {
+            data: value,
+            length,
+            type
+        };
     }
     getUniform(name) {
         return this.renderer.getUniform(name);
     }
     setUniform(name, value, matrix) {
         this.renderer.setUniform(name, value, matrix);
+        this._uniforms[name] = value;
     }
     getTexture(id) {
         return this.renderer.getTexture(id);
@@ -68,6 +74,7 @@ export class WPositionedObject extends CustomObject {
         this.physics = physicsModel;
         this.ratio = 1;
         this.setAttribute('i_vertexPosition', this._tris.buffer, 'FLOAT', 2);
+        this.setUniform('u_origin', this.#physics.origin);
         this.updateTriangles();
     }
     getTriangle(id) {
@@ -140,7 +147,7 @@ export class WOneColorObject extends WPositionedObject {
 
 				vec2 transform(vec2 v) {
 					vec3 pos = vec3(v - u_origin, 1);
-					pos *= u_transform;
+					pos = u_transform * pos;
 					pos += vec3(u_origin, 0);
 					if (u_ratio != .0) {
 						pos.x /= u_ratio;
@@ -247,7 +254,7 @@ export class WTextureObject extends WTexPositionedObject {
 
 				vec2 transform(vec2 v) {
 					vec3 pos = vec3(v - u_origin, 1);
-					pos *= u_transform;
+					pos = u_transform * pos;
 					pos += vec3(u_origin, 0);
 					if (u_ratio != .0) {
 						pos.x /= u_ratio;
@@ -343,7 +350,7 @@ export class CircleObject extends WPositionedObject {
 
 				vec2 transform(vec2 v) {
 					vec3 pos = vec3(v - u_origin, 1);
-					pos *= u_transform;
+					pos = u_transform * pos;
 					pos += vec3(u_origin, 0);
 					if (u_ratio != .0) {
 						pos.x /= u_ratio;

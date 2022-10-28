@@ -31,9 +31,6 @@ export class WScene {
         this.gl.blendFunc(...this.settings.blendFunc);
         this.gl.blendFunc(...this.settings.blendFunc);
         this.resize();
-        for (const name in this.objects) {
-            this.objects[name].init();
-        }
     }
     draw() {
         this.gl.clear(WebGL2RenderingContext.COLOR_BUFFER_BIT |
@@ -111,7 +108,6 @@ const texParamMap = {
     TEXTURE_MAX_LOD: 'texF',
     TEXTURE_MIN_LOD: 'texF'
 };
-// '2' | '2x3' | '2x4' | '3x2' | '3' | '3x4' | '4x2' | '4x3' | '4'
 const matrixDim = {
     '2': 4,
     '2x3': 6,
@@ -147,9 +143,13 @@ export class WRenderer {
         });
         gl.linkProgram(this.program);
     }
-    init({ uniforms = {}, attributes = {}, textures = [] }) {
+    init({ uniforms = {}, attributes = {}, textures = [] } = {}) {
         for (const name in uniforms) {
-            this.setUniform(name, uniforms[name]);
+            const val = uniforms[name];
+            if ('dim' in val)
+                this.setUniform(name, val.data, val.dim);
+            else
+                this.setUniform(name, val);
         }
         for (const name in attributes) {
             const attr = attributes[name];

@@ -5,6 +5,7 @@ import {
 	WUniformType,
 	WTexSettings,
 	WShader,
+	MatrixData,
 	WMatrixDim
 } from './graphics.js'
 
@@ -23,7 +24,6 @@ export interface BasicObject {
 	renderer: WRenderer
 	zIndex: number
 
-	init(): void
 	draw(): void
 }
 
@@ -34,12 +34,6 @@ export class CustomObject implements BasicObject {
 	zIndex: number
 
 	protected _vertsCount: number
-	protected _attributes: Record<string, WAttributeData>
-	protected _uniforms: Record<string, WUniformType>
-	protected _textures: {
-		img: TexImageSource
-		settings?: WTexSettings
-	}[]
 
 	constructor({
 		scene,
@@ -53,7 +47,7 @@ export class CustomObject implements BasicObject {
 	}: {
 		scene: WScene
 		attributes?: Record<string, WAttributeData>
-		uniforms?: Record<string, WUniformType>
+		uniforms?: Record<string, WUniformType | MatrixData>
 		textures?: {
 			img: TexImageSource
 			settings?: WTexSettings
@@ -63,22 +57,13 @@ export class CustomObject implements BasicObject {
 		drawMode?: GLenum
 		zIndex?: number
 	}) {
-		this._attributes = attributes	
-		this._uniforms = uniforms
-		this._textures = textures
 		this._vertsCount = vertsCount
 		this.#drawMode = drawMode
 		this.zIndex = zIndex
 
 		this.renderer = new WRenderer({ scene, shaders })
-	}
 
-	init() {
-		this.renderer.init({
-			uniforms: this._uniforms,
-			attributes: this._attributes,
-			textures: this._textures
-		})
+		this.renderer.init({ uniforms, attributes, textures })
 	}
 
 	draw() {
@@ -94,26 +79,20 @@ export class CustomObject implements BasicObject {
 		type: WAttributeData['type'],
 		length: WAttributeData['length']
 	) {
-		this.renderer.setAttribute(name, value, type, length);
-		this._attributes[name] = {
-			data: value,
-			length,
-			type
-		}
+		this.renderer.setAttribute(name, value, type, length)
 	}
 
 	getUniform(name: string) {
 		return this.renderer.getUniform(name)
 	}
 	setUniform(name: string, value: WUniformType): void
-	setUniform(name: string, value: Float32Array, matrix: WMatrixDim): void
+	setUniform(name: string, matrix: Float32Array, dim: WMatrixDim): void
 	setUniform(
 		name: string,
 		value: WUniformType,
 		matrix?: WMatrixDim
 	) {
-		this.renderer.setUniform(name, <Float32Array>value, matrix);
-		this._uniforms[name] = value
+		this.renderer.setUniform(name, <Float32Array>value, matrix)
 	}
 
 	getTexture(id: number) {
@@ -124,7 +103,7 @@ export class CustomObject implements BasicObject {
 		img: TexImageSource,
 		settings?: WTexSettings
 	) {
-		this.renderer.setTexture({ id, img, settings });
+		this.renderer.setTexture({ id, img, settings })
 	}
 
 	get vertsCount() {

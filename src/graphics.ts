@@ -10,6 +10,11 @@ import { BasicObject, WPositionedObject } from './objects.js'
 
 export type WUniformType = Int32Array | Uint32Array | Float32Array
 
+export type MatrixData = {
+	data: Float32Array,
+	dim: WMatrixDim
+}
+
 export type WMatrixDim = keyof typeof matrixDim
 interface WUniform {
 	location: WebGLUniformLocation
@@ -127,10 +132,6 @@ export class WScene {
 		this.gl.blendFunc(...this.settings.blendFunc)
 
 		this.resize()
-
-		for (const name in this.objects) {
-			this.objects[name].init()
-		}
 	}
 
 	draw() {
@@ -282,20 +283,23 @@ export class WRenderer {
 		gl.linkProgram(this.program)
 	}
 
-	init({ //! Unsupported uniform matrices
+	init({
 		uniforms = {},
 		attributes = {},
 		textures = []
 	}: {
-		uniforms?: Record<string, WUniformType>
+		uniforms?: Record<string, WUniformType | MatrixData>
 		attributes?: Record<string, WAttributeData>
 		textures?: {
 			img: TexImageSource
 			settings?: WTexSettings
 		}[]
-	}) {
+	} = {}) {
 		for (const name in uniforms) {
-			this.setUniform(name, uniforms[name]);
+			const val = uniforms[name]
+
+			if ('dim' in val) this.setUniform(name, val.data, val.dim)
+			else this.setUniform(name, val)
 		}
 
 		for (const name in attributes) {
@@ -423,7 +427,7 @@ export class WRenderer {
 		return this.#data.uniforms[name].data;
 	}
 	setUniform(name: string, value: WUniformType): void
-	setUniform(name: string, value: Float32Array, matrix: WMatrixDim): void
+	setUniform(name: string, matrix: Float32Array, dim: WMatrixDim): void
 	setUniform(
 		name: string,
 		value: WUniformType,

@@ -6,24 +6,12 @@ export class CustomObject {
     renderer;
     zIndex;
     _vertsCount;
-    _attributes;
-    _uniforms;
-    _textures;
     constructor({ scene, uniforms = {}, attributes = {}, textures = [], shaders, vertsCount, drawMode = WebGL2RenderingContext.TRIANGLES, zIndex = 0 }) {
-        this._attributes = attributes;
-        this._uniforms = uniforms;
-        this._textures = textures;
         this._vertsCount = vertsCount;
         this.#drawMode = drawMode;
         this.zIndex = zIndex;
         this.renderer = new WRenderer({ scene, shaders });
-    }
-    init() {
-        this.renderer.init({
-            uniforms: this._uniforms,
-            attributes: this._attributes,
-            textures: this._textures
-        });
+        this.renderer.init({ uniforms, attributes, textures });
     }
     draw() {
         this.renderer.draw(this._vertsCount, this.#drawMode);
@@ -33,18 +21,12 @@ export class CustomObject {
     }
     setAttribute(name, value, type, length) {
         this.renderer.setAttribute(name, value, type, length);
-        this._attributes[name] = {
-            data: value,
-            length,
-            type
-        };
     }
     getUniform(name) {
         return this.renderer.getUniform(name);
     }
     setUniform(name, value, matrix) {
         this.renderer.setUniform(name, value, matrix);
-        this._uniforms[name] = value;
     }
     getTexture(id) {
         return this.renderer.getTexture(id);

@@ -1,5 +1,4 @@
 import { WScene } from './graphics.js';
-import { vec2 } from './math.js';
 import { WOneColorObject, WPositionedObject } from './objects.js';
 import { CopyLocationConstraint, CopyRotationConstraint, CopyScaleConstraint } from './physics.js';
 import { RegularPolygon } from './shapes.js';
@@ -71,8 +70,8 @@ window.addEventListener('load', async () => {
             [...pent.vertices[4]],
             [...pent.vertices[3]]
         ]], 1));
-    scene.objects['pent'].physics.scale = vec2(.5);
-    scene.objects['hex'].physics.scale = vec2(.25);
+    scene.objects['pent'].physics.local.scale(.5, .5);
+    scene.objects['hex'].physics.local.scale(.25, .25);
     const copLoc = globalThis.copLoc = new CopyLocationConstraint(scene.objects.pent.physics, scene.objects.hex.physics, {
         axes: [true, true],
         invert: [false, false],
@@ -101,10 +100,9 @@ window.addEventListener('load', async () => {
         const dt = (time - lastTime) / 1000;
         lastTime = time;
         scene.updateLocations(dt);
-        // copLoc.solve()
-        // copRot.solve()
-        // copScale.solve()
-        scene.updateGlobals();
+        copLoc.solve();
+        copRot.solve();
+        copScale.solve();
         scene.draw();
         requestAnimationFrame(draw);
     };

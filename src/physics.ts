@@ -1,23 +1,21 @@
-import { vec2, Vector2, WVec2 } from './math.js'
-import { Shape } from './shapes.js'
+import { vec2, Vector2, WTransformMatrix3, WVec2 } from './math.js'
 
-export class WPhysicsModel extends Shape {
+export class WPhysicsModel {
 	origin: Float32Array
 
-	global: Float32Array
-	globalLocation: Vector2
-	globalRotation: number
-	globalScale: Vector2
+	local: WTransformMatrix3
+	global: WTransformMatrix3
 
 	velocity: Vector2 // m/s
 	acceleration: Vector2 // m/s²
 	force: Vector2 // N (kg∙m/s²)
 	mass: number // kg
-	
+
 	constructor({
 		location = vec2(0),
 		rotation = 0,
 		scale = vec2(1),
+		skew = 0,
 		mass = 1,
 		velocity = vec2(0),
 		acceleration = vec2(0),
@@ -26,13 +24,12 @@ export class WPhysicsModel extends Shape {
 		location?: Vector2,
 		rotation?: number,
 		scale?: Vector2
+		skew?: number
 		mass?: number
 		velocity?: Vector2
 		acceleration?: Vector2
 		origin?: Vector2
 	} = {}) {
-		super({ location, rotation, scale })
-
 		this.origin = Float32Array.from(origin)
 
 		this.mass = mass
@@ -40,10 +37,14 @@ export class WPhysicsModel extends Shape {
 		this.acceleration = acceleration
 		this.force = vec2(0)
 
-		this.global = new Float32Array(9)
-		this.globalLocation = vec2(0)
-		this.globalRotation = 0
-		this.globalScale = vec2(0)
+		this.local = new WTransformMatrix3({
+			translate: location,
+			rotate: rotation,
+			scale,
+			skew
+		})
+
+		this.global = this.local.copy()
 
 		this.updateLocation(0)
 	}
@@ -61,7 +62,8 @@ export class WPhysicsModel extends Shape {
 	}
 
 	move(displacement: Vector2) {
-		this.location.add(displacement)
+		const [tx, ty] = this.local.t.sum(displacement)
+		this.local.translate(tx, ty)
 	}
 
 	updateLocation(dt: number) {
@@ -72,27 +74,7 @@ export class WPhysicsModel extends Shape {
 		this.acceleration = vec2(0)
 		this.force = vec2(0)
 
-		this.globalLocation = this.location.sum()
-		this.globalRotation = this.rotation
-		this.globalScale = this.scale.sum()
-	}
-
-	updateGlobalLocation() {
-		const [tx, ty] = this.globalLocation
-		const [rx, ry] = Vector2.fromDegree(this.globalRotation)
-		const [sx, sy] = this.globalScale
-
-		this.global.set([
-			rx * sx,
-			ry * sx,
-			0,
-			-ry * sy,
-			rx * sy,
-			0,
-			tx,
-			ty,
-			1
-		])
+		this.global.set(new Float32Array(this.local.buffer))
 	}
 }
 abstract class ObjectConstraint {
@@ -133,7 +115,7 @@ export class WSpring extends TargetConstraint {
 	}
 	
 	solve() {
-		const diff = this.owner.location.dif(this.target.location)
+		const diff = this.owner.global.t.dif(this.target.global.t)
 		const dl = diff.length
 
 		const x = dl - this.L0
@@ -165,7 +147,7 @@ export class WRope extends TargetConstraint {
 	}
 
 	solve() {
-		const dir = this.target.location.dif(this.owner.location)
+		const dir = this.target.global.t.dif(this.owner.global.t)
 		const diff = dir.length
 		
 		if (diff > this.length) {
@@ -237,23 +219,23 @@ export class CopyLocationConstraint extends TargetConstraint {
 
 	solve() {
 		const o = this.ownerRelativity == 'local'
-			? this.owner.location
-			: this.owner.globalLocation
+			? this.owner.local.t
+			: this.owner.global.t
 
 		const t = this.targetRelativity == 'local'
-			? this.target.location
-			: this.target.globalLocation
+			? this.target.local.t
+			: this.target.global.t
 
 		if (this.axes[0]) {
 			const i = this.invert[0] ? -1 : 1
 
-			this.owner.globalLocation.x = t.x * i + ((this.offset) ? o.x : 0)
+			this.owner.global.translateX(t.x * i + ((this.offset) ? o.x : 0))
 		}
 
 		if (this.axes[1]) {
 			const i = this.invert[1] ? -1 : 1
 
-			this.owner.globalLocation.y = t.y * i + ((this.offset) ? o.y : 0)
+			this.owner.global.translateY(t.y * i + ((this.offset) ? o.y : 0))
 		}
 	}
 }
@@ -287,14 +269,14 @@ export class CopyRotationConstraint extends TargetConstraint {
 		const i = this.invert ? -1 : 1
 
 		const o = this.ownerRelativity == 'local'
-			? this.owner.rotation
-			: this.owner.globalRotation
+			? this.owner.local.r
+			: this.owner.global.r
 
 		const t = this.targetRelativity == 'local'
-			? this.target.rotation
-			: this.target.globalRotation
+			? this.target.local.r
+			: this.target.global.r
 
-		this.owner.globalRotation = t * i + ((this.offset) ? o : 0)
+		this.owner.global.rotate(t * i + ((this.offset) ? o : 0))
 	}
 }
 
@@ -325,31 +307,30 @@ export class CopyScaleConstraint extends TargetConstraint {
 
 	solve() {
 		const o = this.ownerRelativity == 'local'
-			? this.owner.scale
-			: this.owner.globalScale
+			? this.owner.local.s
+			: this.owner.global.s
 
 		const t = this.targetRelativity == 'local'
-			? this.target.scale
-			: this.target.globalScale
+			? this.target.local.s
+			: this.target.global.s
 
 		if (this.axes[0]) {
-			this.owner.globalScale.x = t.x * (this.offset ? o.x : 1)
+			this.owner.global.scaleX(t.x * (this.offset ? o.x : 1)) 
 		}
 	
 		if (this.axes[1]) {
-			this.owner.globalScale.y = t.y * (this.offset ? o.y : 1)
+			this.owner.global.scaleY(t.y * (this.offset ? o.y : 1))
 		}
 	}
 }
 
-type transMixMode = 'replace' | 'before' | 'after' | 'split'
+type transMixMode = 'replace' |
+	'beforeFull' | 'beforeSplit' |
+	'afterFull' | 'afterSplit'
 export class CopyTransformsConstraint extends TargetConstraint {
-	#mixMode: transMixMode
-	#ownerRelativity: 'local' | 'global'
-	#targetRelativity: 'local' | 'global'
-	#loc: CopyLocationConstraint
-	#rot: CopyRotationConstraint
-	#scale: CopyScaleConstraint
+	mixMode: transMixMode
+	ownerRelativity: 'local' | 'global'
+	targetRelativity: 'local' | 'global'
 
 	constructor(owner: WPhysicsModel, target: WPhysicsModel, {
 		mixMode = 'replace',
@@ -361,22 +342,6 @@ export class CopyTransformsConstraint extends TargetConstraint {
 		targetRelativity?: 'local' | 'global'
 	} = {}) {
 		super(owner, target)
-
-		this.#loc = new CopyLocationConstraint(owner, target, {
-			ownerRelativity,
-			targetRelativity,
-			offset: false
-		})
-		this.#rot = new CopyRotationConstraint(owner, target, {
-			ownerRelativity,
-			targetRelativity,
-			offset: false
-		})
-		this.#scale = new CopyScaleConstraint(owner, target, {
-			ownerRelativity,
-			targetRelativity,
-			offset: false
-		})
 		
 		/*
 		scale x = sqrt(M11 * M11 + M12 * M12)
@@ -402,29 +367,38 @@ export class CopyTransformsConstraint extends TargetConstraint {
 		// O2: [S2 R2 T2] [S1 R1 T1] => [S2* R2* T2*]
 		// O3: [S3 S2*] [R3 R2*] [T3 T2*]
 
-		/* this.mixMode = mixMode
+		this.mixMode = mixMode
 		this.ownerRelativity = ownerRelativity
-		this.targetRelativity = targetRelativity */
+		this.targetRelativity = targetRelativity
 	}
 
 	solve() {
-		switch (this.#mixMode) {
+		switch (this.mixMode) {
 		case 'replace':
+			this.owner.global.set(
+				new Float32Array((this.targetRelativity == 'global')
+					? this.target.global.buffer
+					: this.target.local.buffer
+				)
+			)
+			break
+
+		case 'beforeFull':
+			// this.owner.global.
+			break
+
+		case 'beforeSplit':
 
 			break
 
-		case 'before':
+		case 'afterFull':
 
 			break
 
-		case 'after':
+		case 'afterSplit':
 
 			break
 
-		case 'split':
-
-			break
-			
 		default:
 			
 		}

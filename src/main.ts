@@ -1,5 +1,4 @@
 import { WScene } from './graphics.js'
-import { vec2 } from './math.js';
 import { WOneColorObject, WPositionedObject } from './objects.js'
 import {
 	CopyLocationConstraint,
@@ -86,8 +85,8 @@ window.addEventListener('load', async () => {
 		[...pent.vertices[3]]
 	]], 1))
 
-	;(<WOneColorObject>scene.objects['pent']).physics.scale = vec2(.5)
-	;(<WOneColorObject>scene.objects['hex']).physics.scale = vec2(.25)
+	;(<WOneColorObject>scene.objects['pent']).physics.local.scale(.5, .5) 
+	;(<WOneColorObject>scene.objects['hex']).physics.local.scale(.25, .25)
 
 	const copLoc = globalThis.copLoc = new CopyLocationConstraint(
 		(<WPositionedObject>scene.objects.pent).physics,
@@ -136,11 +135,9 @@ window.addEventListener('load', async () => {
 
 		scene.updateLocations(dt)
 
-		// copLoc.solve()
-		// copRot.solve()
-		// copScale.solve()
-
-		scene.updateGlobals()
+		copLoc.solve()
+		copRot.solve()
+		copScale.solve()
 
 		scene.draw()
 

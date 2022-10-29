@@ -173,46 +173,50 @@ export class Vector2 {
 export class WMatrix3 {
     _data;
     constructor(data) {
-        this._data = data ?? [
-            [1, 0, 0],
-            [0, 1, 0],
-            [0, 0, 1]
-        ];
+        this._data = Float32Array.from(data?.flat() ?? [
+            1, 0, 0,
+            0, 1, 0,
+            0, 0, 1
+        ]);
     }
     get(col, row) {
         if (typeof row == 'number') {
-            return this._data[col][row];
+            return this._data[col * 3 + row];
         }
         else if (typeof col == 'number') {
-            return [...this._data[col]];
+            const colI = col * 3;
+            return [...this._data.subarray(colI, colI + 3)];
         }
         else {
-            const [a, b, c] = this._data;
-            return [[...a], [...b], [...c]];
+            return [
+                [...this._data.subarray(0, 3)],
+                [...this._data.subarray(3, 6)],
+                [...this._data.subarray(6, 9)]
+            ];
         }
     }
     set(col, row, value) {
         if (typeof value == 'number') {
-            this._data[col][row] = value;
+            this._data[+col * 3 + +row] = value;
         }
         else if (Array.isArray(row)) {
-            this._data[col] = row;
+            this._data.set(row, +col * 3);
         }
         else if (Array.isArray(col)) {
-            this._data = col;
+            this._data.set(col.flat());
         }
         else
             throw new Error('Invalid data');
+        return this;
     }
     copy() {
         return new WMatrix3(this.get());
     }
     sum(...mat) {
-        const ret = [];
-        this._data.forEach((_, col) => {
-            ret.push([]);
-            this._data[col].forEach((v1, row) => {
-                ret[col].push(mat.reduce((t, v) => t + v[col][row], v1));
+        const ret = [...this._data];
+        mat.forEach(m => {
+            m._data.forEach((v, i) => {
+                ret[i] += v;
             });
         });
         return new WMatrix3(ret);
@@ -220,29 +224,31 @@ export class WMatrix3 {
     mult(mat) {
         const a = this.get();
         const b = mat.get();
-        // TODO: Turn to loop calc
-        const r00 = a[0][0] * b[0][0] + a[1][0] * b[0][1] + a[2][0] * b[0][2];
-        const r10 = a[0][0] * b[1][0] + a[1][0] * b[1][1] + a[2][0] * b[1][2];
-        const r20 = a[0][0] * b[2][0] + a[1][0] * b[2][1] + a[2][0] * b[2][2];
-        const r01 = a[0][1] * b[0][0] + a[1][1] * b[0][1] + a[2][1] * b[0][2];
-        const r11 = a[0][1] * b[1][0] + a[1][1] * b[1][1] + a[2][1] * b[1][2];
-        const r21 = a[0][1] * b[2][0] + a[1][1] * b[2][1] + a[2][1] * b[2][2];
-        const r02 = a[0][2] * b[0][0] + a[1][2] * b[0][1] + a[2][2] * b[0][2];
-        const r12 = a[0][2] * b[1][0] + a[1][2] * b[1][1] + a[2][2] * b[1][2];
-        const r22 = a[0][2] * b[2][0] + a[1][2] * b[2][1] + a[2][2] * b[2][2];
-        return new WMatrix3([
-            [r00, r01, r02],
-            [r10, r11, r12],
-            [r20, r21, r22]
-        ]);
+        const r = [
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0]
+        ];
+        for (let i = 0; i < 3; i++) {
+            for (let j = 0; j < 3; j++) {
+                r[j][i] = a[0][i] * b[j][0] +
+                    a[1][i] * b[j][1] +
+                    a[2][i] * b[j][2];
+            }
+        }
+        return new WMatrix3(r);
     }
     transpose() {
-        const m = this.get();
-        this.set([
-            [m[0][0], m[1][0], m[2][0]],
-            [m[0][1], m[1][1], m[2][1]],
-            [m[0][2], m[1][2], m[2][2]]
-        ]);
+        const ret = [
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0]
+        ];
+        this.get().forEach((v, i) => v.forEach((v, j) => {
+            ret[j][i] = v;
+        }));
+        this.set(ret);
+        return this;
     }
 }
 export class WTransformMatrix3 {
@@ -251,12 +257,17 @@ export class WTransformMatrix3 {
     #skew;
     #scale;
     #data = new Float32Array(9);
-    constructor({ translate = vec2(0), rotate = 0, skew = 0, scale = vec2(1) } = {}) {
-        this.#translate = translate;
-        this.#direct = Vector2.fromDegree(rotate);
-        this.#skew = Math.tan(skew);
-        this.#scale = scale;
-        this.calcMatrix();
+    constructor(value = {}) {
+        if (value instanceof Float32Array) {
+            this.set(value);
+        }
+        else {
+            this.#translate = value.translate ?? vec2(0);
+            this.#direct = Vector2.fromDegree(value.rotate ?? 0);
+            this.#skew = Math.tan(value.skew) ?? 0;
+            this.#scale = value.scale ?? vec2(1);
+            this.calcMatrix();
+        }
     }
     calcMatrix() {
         const [tx, ty] = this.#translate;
@@ -275,8 +286,7 @@ export class WTransformMatrix3 {
         this.#direct = vec2(m11, m12).norm;
         const sk = Math.atan2(m22, m21) - Math.PI / 2 - this.#direct.rotation;
         this.#skew = -Math.tan(sk);
-        this.#scale.x = Math.sqrt(m11 ** 2 + m12 ** 2);
-        this.#scale.y = Math.sqrt(m21 ** 2 + m22 ** 2) * Math.cos(sk);
+        this.#scale = vec2(Math.sqrt(m11 ** 2 + m12 ** 2), Math.sqrt(m21 ** 2 + m22 ** 2) * Math.cos(sk));
         this.#translate = vec2(m31, m32);
         return this;
     }
@@ -316,12 +326,18 @@ export class WTransformMatrix3 {
         return this.calcMatrix();
     }
     matrix(a = 1, b = 0, c = 0, d = 1, e = 0, f = 0) {
-        this.#data.set([
+        this.set([
             a, b, 0,
             c, d, 0,
             e, f, 1
         ]);
-        return this.calcFields();
+    }
+    copy() {
+        return new WTransformMatrix3(this.#data);
+    }
+    set(value, offset) {
+        this.#data.set(value, offset);
+        this.calcFields();
     }
     get tx() {
         return this.#translate.x;

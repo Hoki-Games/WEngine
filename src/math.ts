@@ -229,14 +229,17 @@ export class Vector2 implements Iterable<number> {
 }
 
 export class WMatrix3 {
-	protected _data: WTri3<number>
+	protected _data: Float32Array
 
-	constructor(data?: WTri3<number>) {
-		this._data = data ?? [
-			[1, 0, 0],
-			[0, 1, 0],
-			[0, 0, 1]
-		]
+	constructor()
+	constructor(data: WTri3<number>)
+	constructor(data: FixedArray<number, 9>)
+	constructor(data?: WTri3<number> | FixedArray<number, 9>) {
+		this._data = Float32Array.from(data?.flat() ?? [
+			1, 0, 0,
+			0, 1, 0,
+			0, 0, 1
+		])
 	}
 
 	get(): WTri3<number>
@@ -244,30 +247,36 @@ export class WMatrix3 {
 	get(col: number, row: number): number
 	get(col?: number, row?: number) {
 		if (typeof row == 'number') {
-			return this._data[col][row]
+			return this._data[col * 3 + row]
 		} else if (typeof col == 'number') {
-			return [...this._data[col]]
+			const colI = col * 3
+			return [...this._data.subarray(colI, colI + 3)]
 		} else {
-			const [a, b, c] = this._data
-			return [[...a], [...b], [...c]]
+			return [
+				[...this._data.subarray(0, 3)],
+				[...this._data.subarray(3, 6)],
+				[...this._data.subarray(6, 9)]
+			]
 		}
 	}
 
-	set(value: WTri3<number>): void
-	set(col: number, value: WVec3<number>): void
-	set(col: number, row: number, value: number): void
+	set(value: WTri3<number>): this
+	set(col: number, value: WVec3<number>): this
+	set(col: number, row: number, value: number): this
 	set(
 		col: number | WTri3<number>,
 		row?: number | WVec3<number>,
 		value?: number
 	) {
 		if (typeof value == 'number') {
-			this._data[<number>col][<number>row] = value
+			this._data[+col * 3 + +row] = value
 		} else if (Array.isArray(row)) {
-			this._data[<number>col] = row
+			this._data.set(row, +col * 3)
 		} else if (Array.isArray(col)) {
-			this._data = col
+			this._data.set(col.flat())
 		} else throw new Error('Invalid data')
+
+		return this
 	}
 
 	copy() {
@@ -275,55 +284,53 @@ export class WMatrix3 {
 	}
 
 	sum(...mat: WMatrix3[]) {
-		const ret = []
+		const ret = <FixedArray<number, 9>>[...this._data]
 
-		this._data.forEach((_, col) => {
-			ret.push([])
-			this._data[col].forEach((v1, row) => { 
-				ret[col].push(mat.reduce((t, v) => t + v[col][row], v1))
+		mat.forEach(m => {
+			m._data.forEach((v, i) => {
+				ret[i] += v
 			})
 		})
 		
-		return new WMatrix3(<WTri3<number>>ret)
+		return new WMatrix3(ret)
 	}
 
 	mult(mat: WMatrix3) {
 		const a = this.get()
 		const b = mat.get()
+		const r: WTri3<number> = [
+			[0, 0, 0],
+			[0, 0, 0],
+			[0, 0, 0]
+		]
 
-		// TODO: Turn to loop calc
+		for (let i = 0; i < 3; i++) {
+			for (let j = 0; j < 3; j++) {
+				r[j][i] = a[0][i] * b[j][0] +
+					a[1][i] * b[j][1] +
+					a[2][i] * b[j][2]
+			}
+		}
 
-		const r00 = a[0][0] * b[0][0] + a[1][0] * b[0][1] + a[2][0] * b[0][2]
-		const r10 = a[0][0] * b[1][0] + a[1][0] * b[1][1] + a[2][0] * b[1][2]
-		const r20 = a[0][0] * b[2][0] + a[1][0] * b[2][1] + a[2][0] * b[2][2]
-
-		const r01 = a[0][1] * b[0][0] + a[1][1] * b[0][1] + a[2][1] * b[0][2]
-		const r11 = a[0][1] * b[1][0] + a[1][1] * b[1][1] + a[2][1] * b[1][2]
-		const r21 = a[0][1] * b[2][0] + a[1][1] * b[2][1] + a[2][1] * b[2][2]
-
-		const r02 = a[0][2] * b[0][0] + a[1][2] * b[0][1] + a[2][2] * b[0][2]
-		const r12 = a[0][2] * b[1][0] + a[1][2] * b[1][1] + a[2][2] * b[1][2]
-		const r22 = a[0][2] * b[2][0] + a[1][2] * b[2][1] + a[2][2] * b[2][2]
-		
-		return new WMatrix3([
-			[r00, r01, r02],
-			[r10, r11, r12],
-			[r20, r21, r22]
-		])
+		return new WMatrix3(r)
 	}
 
 	transpose() {
-		const m = this.get()
+		const ret: WTri3<number> = [
+			[0, 0, 0],
+			[0, 0, 0],
+			[0, 0, 0]
+		]
 
-		this.set([
-			[m[0][0], m[1][0], m[2][0]],
-			[m[0][1], m[1][1], m[2][1]],
-			[m[0][2], m[1][2], m[2][2]]
-		])
+		this.get().forEach((v, i) => v.forEach((v, j) => {
+			ret[j][i] = v
+		}))
+
+		return this.set(ret)
 	}
 }
 
-export class WTransformMatrix3 {
+export class WTransformMatrix3 { // TODO: Extend from Matrix
 	#translate: Vector2
 	#direct: Vector2
 	#skew: number
@@ -331,23 +338,29 @@ export class WTransformMatrix3 {
 
 	#data = new Float32Array(9)
 
-	constructor({
-		translate = vec2(0),
-		rotate = 0,
-		skew = 0,
-		scale = vec2(1)
-	}: {
+	constructor(buffer: Float32Array)
+	constructor(options: {
 		translate?: Vector2,
 		rotate?: number,
 		skew?: number,
 		scale?: Vector2
-	} = {}) {
-		this.#translate = translate
-		this.#direct = Vector2.fromDegree(rotate)
-		this.#skew = Math.tan(skew)
-		this.#scale = scale
+	})
+	constructor(value: {
+		translate?: Vector2,
+		rotate?: number,
+		skew?: number,
+		scale?: Vector2
+	} | Float32Array = {}) { 
+		if (value instanceof Float32Array) {
+			this.set(value)
+		} else {
+			this.#translate = value.translate ?? vec2(0)
+			this.#direct = Vector2.fromDegree(value.rotate ?? 0)
+			this.#skew = Math.tan(value.skew) ?? 0
+			this.#scale = value.scale ?? vec2(1)
 
-		this.calcMatrix()
+			this.calcMatrix()
+		}
 	}
 
 	calcMatrix() {
@@ -372,9 +385,11 @@ export class WTransformMatrix3 {
 		
 		const sk = Math.atan2(m22, m21) - Math.PI / 2 - this.#direct.rotation
 		this.#skew = -Math.tan(sk)
-		
-		this.#scale.x = Math.sqrt(m11 ** 2 + m12 ** 2)
-		this.#scale.y = Math.sqrt(m21 ** 2 + m22 ** 2) * Math.cos(sk)
+
+		this.#scale = vec2(
+			Math.sqrt(m11 ** 2 + m12 ** 2),
+			Math.sqrt(m21 ** 2 + m22 ** 2) * Math.cos(sk)
+		)
 		
 		this.#translate = vec2(m31, m32)
 
@@ -433,13 +448,20 @@ export class WTransformMatrix3 {
 	}
 
 	matrix(a = 1, b = 0, c = 0, d = 1, e = 0, f = 0) {
-		this.#data.set([
+		this.set([
 			a, b, 0,
 			c, d, 0,
 			e, f, 1
 		])
+	}
 
-		return this.calcFields()
+	copy() {
+		return new WTransformMatrix3(this.#data)
+	}
+
+	set(value: ArrayLike<number>, offset?: number) {
+		this.#data.set(value, offset)
+		this.calcFields()
 	}
 
 	get tx() {

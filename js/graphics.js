@@ -49,13 +49,6 @@ export class WScene {
                 obj.physics.updateLocation(dt);
         }
     }
-    updateGlobals() {
-        for (const name in this.objects) {
-            const obj = this.objects[name];
-            if (obj instanceof WPositionedObject)
-                obj.physics.updateGlobalLocation();
-        }
-    }
     addObject(arg1, arg2) {
         if (typeof arg1 == 'string') {
             this.objects[arg1] = arg2;

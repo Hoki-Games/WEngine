@@ -221,9 +221,9 @@ export class WPositionedObject extends CustomObject {
 	get physics() {
 		return this.#physics
 	}
-	set physics(v) {
+	set physics(v: WPhysicsModel) {
 		this.#physics = v
-		this.setUniform('u_transform', v.global, '3')
+		this.setUniform('u_transform', new Float32Array(v.global.buffer), '3')
 	}
 
 	get ratio() {

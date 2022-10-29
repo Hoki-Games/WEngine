@@ -157,14 +157,6 @@ export class WScene {
 		}
 	}
 
-	updateGlobals() {
-		for (const name in this.objects) {
-			const obj = this.objects[name]
-			if (obj instanceof WPositionedObject)
-				obj.physics.updateGlobalLocation()
-		}
-	}
-
 	addObject(name: string, value: BasicObject): void
 	addObject(entries: [string, BasicObject][]): void
 	addObject(entries: Record<string, BasicObject>): void

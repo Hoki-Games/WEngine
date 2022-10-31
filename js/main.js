@@ -1,6 +1,6 @@
 import { WScene } from './graphics.js';
 import { WOneColorObject, WPositionedObject } from './objects.js';
-import { CopyLocationConstraint, CopyRotationConstraint, CopyScaleConstraint } from './physics.js';
+import { LimitDistanceConstraint } from './physics.js';
 import { RegularPolygon } from './shapes.js';
 window.addEventListener('load', async () => {
     const display = document.getElementById('display');
@@ -31,68 +31,50 @@ window.addEventListener('load', async () => {
         scene.resize();
     };
     const hex = new RegularPolygon({
-        // radius: .25,
         radius: 1,
         vertexCount: 6
     });
     const pent = new RegularPolygon({
-        // radius: .50,
         radius: 1,
         vertexCount: 5
     });
     scene.addObject('hex', new WOneColorObject(scene, '#03fcc6', [[
-            [...hex.vertices[0]],
-            [...hex.vertices[1]],
-            [...hex.vertices[5]]
+            hex.vertices[0].arr,
+            hex.vertices[1].arr,
+            hex.vertices[5].arr
         ], [
-            [...hex.vertices[5]],
-            [...hex.vertices[1]],
-            [...hex.vertices[4]]
+            hex.vertices[5].arr,
+            hex.vertices[1].arr,
+            hex.vertices[4].arr
         ], [
-            [...hex.vertices[1]],
-            [...hex.vertices[2]],
-            [...hex.vertices[4]]
+            hex.vertices[1].arr,
+            hex.vertices[2].arr,
+            hex.vertices[4].arr
         ], [
-            [...hex.vertices[4]],
-            [...hex.vertices[2]],
-            [...hex.vertices[3]]
+            hex.vertices[4].arr,
+            hex.vertices[2].arr,
+            hex.vertices[3].arr
         ]], 0));
     scene.addObject('pent', new WOneColorObject(scene, '#5ab03f', [[
-            [...pent.vertices[0]],
-            [...pent.vertices[2]],
-            [...pent.vertices[1]]
+            pent.vertices[0].arr,
+            pent.vertices[2].arr,
+            pent.vertices[1].arr
         ], [
-            [...pent.vertices[0]],
-            [...pent.vertices[3]],
-            [...pent.vertices[2]]
+            pent.vertices[0].arr,
+            pent.vertices[3].arr,
+            pent.vertices[2].arr
         ], [
-            [...pent.vertices[0]],
-            [...pent.vertices[4]],
-            [...pent.vertices[3]]
+            pent.vertices[0].arr,
+            pent.vertices[4].arr,
+            pent.vertices[3].arr
         ]], 1));
     scene.objects['pent'].physics.local.scale(.5, .5);
     scene.objects['hex'].physics.local.scale(.25, .25);
-    const copLoc = globalThis.copLoc = new CopyLocationConstraint(scene.objects.pent.physics, scene.objects.hex.physics, {
-        axes: [true, true],
-        invert: [false, false],
-        offset: false,
-        ownerRelativity: 'global',
-        targetRelativity: 'global'
-    });
-    const copRot = globalThis.copRot = new CopyRotationConstraint(scene.objects.pent.physics, scene.objects.hex.physics, {
-        invert: false,
-        offset: false,
-        ownerRelativity: 'global',
-        targetRelativity: 'global'
-    });
-    const copScale = globalThis.copScale = new CopyScaleConstraint(scene.objects.pent.physics, scene.objects.hex.physics, {
-        offset: false,
-        ownerRelativity: 'global',
-        targetRelativity: 'global'
+    const limitDist = globalThis.limitDist = new LimitDistanceConstraint(scene.objects.pent.physics, scene.objects.hex.physics, {
+        distance: .2
     });
     window.addEventListener('resize', resize);
     resize();
-    scene.init();
     let lastTime = -1;
     const draw = globalThis.draw = (time) => {
         if (lastTime < 0)
@@ -100,9 +82,7 @@ window.addEventListener('load', async () => {
         const dt = (time - lastTime) / 1000;
         lastTime = time;
         scene.updateLocations(dt);
-        copLoc.solve();
-        copRot.solve();
-        copScale.solve();
+        limitDist.solve();
         scene.draw();
         requestAnimationFrame(draw);
     };

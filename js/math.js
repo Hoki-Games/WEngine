@@ -59,7 +59,7 @@ export class Vector2 {
         return ret;
     }
     /**
-     * Calculates the difference between gien vector and this.
+     * Calculates the difference between given vector and this.
      */
     dif(v) {
         return vec2(this.x - v.x, this.y - v.y);
@@ -136,7 +136,7 @@ export class Vector2 {
      *
      * _|A|_
      */
-    get length() {
+    get size() {
         return Math.hypot(this.x, this.y);
     }
     /**
@@ -149,13 +149,19 @@ export class Vector2 {
      * Returns this vector but with length equal to 1.
      */
     get norm() {
-        return this.scale(1 / this.length);
+        return this.scale(1 / this.size);
     }
     /**
      * Return this vector's rotation.
      */
     get rotation() {
         return Math.atan2(this.y, this.x);
+    }
+    get arr() {
+        return [this.x, this.y];
+    }
+    get length() {
+        return 2;
     }
     get [Symbol.iterator]() {
         const me = this;
@@ -247,19 +253,21 @@ export class WMatrix3 {
         this.get().forEach((v, i) => v.forEach((v, j) => {
             ret[j][i] = v;
         }));
-        this.set(ret);
-        return this;
+        return this.set(ret);
+    }
+    get buffer() {
+        return this._data.buffer;
     }
 }
-export class WTransformMatrix3 {
+export class WTransformMatrix3 extends WMatrix3 {
     #translate;
     #direct;
     #skew;
     #scale;
-    #data = new Float32Array(9);
     constructor(value = {}) {
+        super();
         if (value instanceof Float32Array) {
-            this.set(value);
+            this.setArray(value);
         }
         else {
             this.#translate = value.translate ?? vec2(0);
@@ -274,7 +282,7 @@ export class WTransformMatrix3 {
         const [rx, ry] = this.#direct;
         const [sx, sy] = this.#scale;
         const k = this.#skew;
-        this.#data.set([
+        this._data.set([
             rx * sx, ry * sx, 0,
             (rx * k - ry) * sy, (ry * k + rx) * sy, 0,
             tx, ty, 1
@@ -282,7 +290,7 @@ export class WTransformMatrix3 {
         return this;
     }
     calcFields() {
-        const [m11, m12, , m21, m22, , m31, m32] = this.#data;
+        const [m11, m12, , m21, m22, , m31, m32] = this._data;
         this.#direct = vec2(m11, m12).norm;
         const sk = Math.atan2(m22, m21) - Math.PI / 2 - this.#direct.rotation;
         this.#skew = -Math.tan(sk);
@@ -290,53 +298,73 @@ export class WTransformMatrix3 {
         this.#translate = vec2(m31, m32);
         return this;
     }
-    translateX(x) {
+    translateX(x, recalc = true) {
         this.#translate.x = x;
-        return this.calcMatrix();
+        if (recalc)
+            this.calcMatrix();
+        return this;
     }
-    translateY(y) {
+    translateY(y, recalc = true) {
         this.#translate.y = y;
-        return this.calcMatrix();
+        if (recalc)
+            this.calcMatrix();
+        return this;
     }
-    translate(x, y) {
+    translate(x, y, recalc = true) {
         this.#translate = vec2(x, y);
-        return this.calcMatrix();
+        if (recalc)
+            this.calcMatrix();
+        return this;
     }
-    rotate(v0, v1) {
-        if (v1 !== undefined)
+    rotate(v0, v1 = true, v2 = true) {
+        if (typeof v1 == 'number') {
             this.#direct = vec2(v0, v1).norm;
-        else
+            if (v2)
+                this.calcMatrix();
+        }
+        else {
             this.#direct = Vector2.fromDegree(v0);
-        return this.calcMatrix();
+            if (v1)
+                this.calcMatrix();
+        }
+        return this;
     }
-    scaleX(sx) {
+    scaleX(sx, recalc = true) {
         this.#scale.x = sx;
-        return this.calcMatrix();
+        if (recalc)
+            this.calcMatrix();
+        return this;
     }
-    scaleY(sy) {
+    scaleY(sy, recalc = true) {
         this.#scale.y = sy;
-        return this.calcMatrix();
+        if (recalc)
+            this.calcMatrix();
+        return this;
     }
-    scale(sx, sy) {
+    scale(sx, sy, recalc = true) {
         this.#scale = vec2(sx, sy);
-        return this.calcMatrix();
+        if (recalc)
+            this.calcMatrix();
+        return this;
     }
-    skew(k) {
+    skew(k, recalc = true) {
         this.#skew = Math.tan(k);
-        return this.calcMatrix();
+        if (recalc)
+            this.calcMatrix();
+        return this;
     }
     matrix(a = 1, b = 0, c = 0, d = 1, e = 0, f = 0) {
-        this.set([
+        this.setArray([
             a, b, 0,
             c, d, 0,
             e, f, 1
         ]);
     }
     copy() {
-        return new WTransformMatrix3(this.#data);
+        return new WTransformMatrix3(this._data);
     }
-    set(value, offset) {
-        this.#data.set(value, offset);
+    setArray(value, offset) {
+        this._data.set(value, offset);
         this.calcFields();
     }
     get tx() {
@@ -367,53 +395,50 @@ export class WTransformMatrix3 {
         return this.#skew;
     }
     get m() {
-        const [a, b, , c, d, , e, f] = this.#data;
+        const [a, b, , c, d, , e, f] = this._data;
         return [a, b, c, d, e, f];
     }
     get a() {
-        return this.#data[0];
+        return this._data[0];
     }
     set a(v) {
-        this.#data[0] = v;
+        this._data[0] = v;
         this.calcFields();
     }
     get b() {
-        return this.#data[1];
+        return this._data[1];
     }
     set b(v) {
-        this.#data[1] = v;
+        this._data[1] = v;
         this.calcFields();
     }
     get c() {
-        return this.#data[3];
+        return this._data[3];
     }
     set c(v) {
-        this.#data[3] = v;
+        this._data[3] = v;
         this.calcFields();
     }
     get d() {
-        return this.#data[4];
+        return this._data[4];
     }
     set d(v) {
-        this.#data[4] = v;
+        this._data[4] = v;
         this.calcFields();
     }
     get e() {
-        return this.#data[6];
+        return this._data[6];
     }
     set e(v) {
-        this.#data[6] = v;
+        this._data[6] = v;
         this.calcFields();
     }
     get f() {
-        return this.#data[7];
+        return this._data[7];
     }
     set f(v) {
-        this.#data[7] = v;
+        this._data[7] = v;
         this.calcFields();
-    }
-    get buffer() {
-        return this.#data.buffer;
     }
 }
 export const bezier = (x1, y1, x2, y2) => {

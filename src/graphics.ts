@@ -119,6 +119,8 @@ export class WScene {
 		}
 		this.objects = {}
 		this.animations = []
+
+		this.init()
 	}
 
 	init() {

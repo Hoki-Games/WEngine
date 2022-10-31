@@ -102,7 +102,7 @@ export class Vector2 implements Iterable<number> {
 	}
 
 	/**
-	 * Calculates the difference between gien vector and this.
+	 * Calculates the difference between given vector and this.
 	 */
 	dif(v: Vector2) {
 		return vec2(this.x - v.x, this.y - v.y)
@@ -188,7 +188,7 @@ export class Vector2 implements Iterable<number> {
 	 * 
 	 * _|A|_
 	 */
-	get length() {
+	get size() {
 		return Math.hypot(this.x, this.y)
 	}
 
@@ -203,7 +203,7 @@ export class Vector2 implements Iterable<number> {
 	 * Returns this vector but with length equal to 1.
 	 */
 	get norm() {
-		return this.scale(1 / this.length)
+		return this.scale(1 / this.size)
 	}
 
 	/**
@@ -211,6 +211,14 @@ export class Vector2 implements Iterable<number> {
 	 */
 	get rotation() {
 		return Math.atan2(this.y, this.x)
+	}
+
+	get arr(): [number, number] {
+		return [this.x, this.y]
+	}
+
+	get length(): 2 {
+		return 2
 	}
 
 	get [Symbol.iterator]() {
@@ -328,15 +336,17 @@ export class WMatrix3 {
 
 		return this.set(ret)
 	}
+
+	get buffer() {
+		return this._data.buffer
+	}
 }
 
-export class WTransformMatrix3 { // TODO: Extend from Matrix
+export class WTransformMatrix3 extends WMatrix3 {
 	#translate: Vector2
 	#direct: Vector2
 	#skew: number
 	#scale: Vector2
-
-	#data = new Float32Array(9)
 
 	constructor(buffer: Float32Array)
 	constructor(options: {
@@ -350,9 +360,11 @@ export class WTransformMatrix3 { // TODO: Extend from Matrix
 		rotate?: number,
 		skew?: number,
 		scale?: Vector2
-	} | Float32Array = {}) { 
+	} | Float32Array = {}) {
+		super()
+
 		if (value instanceof Float32Array) {
-			this.set(value)
+			this.setArray(value)
 		} else {
 			this.#translate = value.translate ?? vec2(0)
 			this.#direct = Vector2.fromDegree(value.rotate ?? 0)
@@ -369,7 +381,7 @@ export class WTransformMatrix3 { // TODO: Extend from Matrix
 		const [sx, sy] = this.#scale
 		const k = this.#skew
 
-		this.#data.set([
+		this._data.set([
 			rx * sx, ry * sx, 0,
 			(rx * k - ry) * sy, (ry * k + rx) * sy, 0,
 			tx, ty, 1
@@ -379,7 +391,7 @@ export class WTransformMatrix3 { // TODO: Extend from Matrix
 	}
 
 	calcFields() {
-		const [m11, m12, , m21, m22, , m31, m32] = this.#data
+		const [m11, m12, , m21, m22, , m31, m32] = this._data
 
 		this.#direct = vec2(m11, m12).norm
 		
@@ -396,59 +408,78 @@ export class WTransformMatrix3 { // TODO: Extend from Matrix
 		return this
 	}
 
-	translateX(x: number) {
+	translateX(x: number, recalc = true) {
 		this.#translate.x = x
 
-		return this.calcMatrix()
+		if (recalc) this.calcMatrix()
+
+		return this
 	}
 
-	translateY(y: number) {
+	translateY(y: number, recalc = true) {
 		this.#translate.y = y
 
-		return this.calcMatrix()
+		if (recalc) this.calcMatrix()
+
+		return this
 	}
 
-	translate(x: number, y: number) {
+	translate(x: number, y: number, recalc = true) {
 		this.#translate = vec2(x, y)
 
-		return this.calcMatrix()
+		if (recalc) this.calcMatrix()
+
+		return this
 	}
 
-	rotate(r: number): WTransformMatrix3
-	rotate(x: number, y: number): WTransformMatrix3
-	rotate(v0: number, v1?: number) {
-		if (v1 !== undefined) this.#direct = vec2(v0, v1).norm
-		else this.#direct = Vector2.fromDegree(v0)
+	rotate(r: number, recalc?: boolean): WTransformMatrix3
+	rotate(x: number, y: number, recalc?: boolean): WTransformMatrix3
+	rotate(v0: number, v1: number | boolean = true, v2 = true) {
+		if (typeof v1 == 'number') {
+			this.#direct = vec2(v0, v1).norm
+			if (v2) this.calcMatrix()
+		} else {
+			this.#direct = Vector2.fromDegree(v0)
+			if (v1) this.calcMatrix()
+		}
 
-		return this.calcMatrix()
+		return this
 	}
 
-	scaleX(sx: number) {
+	scaleX(sx: number, recalc = true) {
 		this.#scale.x = sx
 
-		return this.calcMatrix()
+		if (recalc) this.calcMatrix()
+
+		return this
 	}
 
-	scaleY(sy: number) {
+	scaleY(sy: number, recalc = true) {
 		this.#scale.y = sy
 
-		return this.calcMatrix()
+		if (recalc) this.calcMatrix()
+
+		return this
 	}
 
-	scale(sx: number, sy: number) {
+	scale(sx: number, sy: number, recalc = true) {
 		this.#scale = vec2(sx, sy)
 
-		return this.calcMatrix()
+		if (recalc) this.calcMatrix()
+
+		return this
 	}
 
-	skew(k: number) {
+	skew(k: number, recalc = true) {
 		this.#skew = Math.tan(k)
 
-		return this.calcMatrix()
+		if (recalc) this.calcMatrix()
+
+		return this
 	}
 
 	matrix(a = 1, b = 0, c = 0, d = 1, e = 0, f = 0) {
-		this.set([
+		this.setArray([
 			a, b, 0,
 			c, d, 0,
 			e, f, 1
@@ -456,11 +487,11 @@ export class WTransformMatrix3 { // TODO: Extend from Matrix
 	}
 
 	copy() {
-		return new WTransformMatrix3(this.#data)
+		return new WTransformMatrix3(this._data)
 	}
 
-	set(value: ArrayLike<number>, offset?: number) {
-		this.#data.set(value, offset)
+	setArray(value: ArrayLike<number>, offset?: number) {
+		this._data.set(value, offset)
 		this.calcFields()
 	}
 
@@ -501,68 +532,64 @@ export class WTransformMatrix3 { // TODO: Extend from Matrix
 	}
 
 	get m() {
-		const [a, b, , c, d, , e, f] = this.#data
+		const [a, b, , c, d, , e, f] = this._data
 
 
 		return [a, b, c, d, e, f]
 	}
 	
 	get a() {
-		return this.#data[0]
+		return this._data[0]
 	}
 	set a(v: number) {
-		this.#data[0] = v
+		this._data[0] = v
 
 		this.calcFields()
 	}
 
 	get b() {
-		return this.#data[1]
+		return this._data[1]
 	}
 	set b(v: number) {
-		this.#data[1] = v
+		this._data[1] = v
 
 		this.calcFields()
 	}
 
 	get c() {
-		return this.#data[3]
+		return this._data[3]
 	}
 	set c(v: number) {
-		this.#data[3] = v
+		this._data[3] = v
 
 		this.calcFields()
 	}
 
 	get d() {
-		return this.#data[4]
+		return this._data[4]
 	}
 	set d(v: number) {
-		this.#data[4] = v
+		this._data[4] = v
 
 		this.calcFields()
 	}
 
 	get e() {
-		return this.#data[6]
+		return this._data[6]
 	}
 	set e(v: number) {
-		this.#data[6] = v
+		this._data[6] = v
 
 		this.calcFields()
 	}
 
 	get f() {
-		return this.#data[7]
+		return this._data[7]
 	}
 	set f(v: number) {
-		this.#data[7] = v
+		this._data[7] = v
 
 		this.calcFields()
-	}
-	
-	get buffer() {
-		return this.#data.buffer
 	}
 }
 

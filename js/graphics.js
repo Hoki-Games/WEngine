@@ -23,6 +23,7 @@ export class WScene {
         };
         this.objects = {};
         this.animations = [];
+        this.init();
     }
     init() {
         this.gl.clearColor(...this.settings.backgroundColor);

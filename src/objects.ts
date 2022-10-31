@@ -497,18 +497,18 @@ export class LinesObject extends WOneColorObject {
 			const v2 = vec2(...line[1])
 			const a = v2.dif(v1)
 			const b = a.right
-			const c = b.scale(width / b.length)
+			const c = b.scale(width / b.size)
 
-			verts.push(<never>[
-				v2.dif(c),
-				v1.sum(c),
-				v1.dif(c)
+			verts.push([
+				v2.dif(c).arr,
+				v1.sum(c).arr,
+				v1.dif(c).arr
 			])
 
-			verts.push(<never>[
-				v2.dif(c),
-				v2.sum(c),
-				v1.sum(c)
+			verts.push([
+				v2.dif(c).arr,
+				v2.sum(c).arr,
+				v1.sum(c).arr
 			])
 		}
 

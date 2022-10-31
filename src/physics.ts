@@ -1,10 +1,10 @@
 import { vec2, Vector2, WTransformMatrix3, WVec2 } from './math.js'
 
 export class WPhysicsModel {
-	origin: Float32Array
+	#origin: Float32Array
 
-	local: WTransformMatrix3
-	global: WTransformMatrix3
+	#local: WTransformMatrix3
+	#global: WTransformMatrix3
 
 	velocity: Vector2 // m/s
 	acceleration: Vector2 // m/s²
@@ -30,21 +30,21 @@ export class WPhysicsModel {
 		acceleration?: Vector2
 		origin?: Vector2
 	} = {}) {
-		this.origin = Float32Array.from(origin)
+		this.#origin = Float32Array.from(origin)
 
 		this.mass = mass
 		this.velocity = velocity
 		this.acceleration = acceleration
 		this.force = vec2(0)
 
-		this.local = new WTransformMatrix3({
+		this.#local = new WTransformMatrix3({
 			translate: location,
 			rotate: rotation,
 			scale,
 			skew
 		})
 
-		this.global = this.local.copy()
+		this.#global = this.#local.copy()
 
 		this.updateLocation(0)
 	}
@@ -62,8 +62,8 @@ export class WPhysicsModel {
 	}
 
 	move(displacement: Vector2) {
-		const [tx, ty] = this.local.t.sum(displacement)
-		this.local.translate(tx, ty)
+		const [tx, ty] = this.#local.t.sum(displacement)
+		this.#local.translate(tx, ty)
 	}
 
 	updateLocation(dt: number) {
@@ -74,9 +74,22 @@ export class WPhysicsModel {
 		this.acceleration = vec2(0)
 		this.force = vec2(0)
 
-		this.global.set(new Float32Array(this.local.buffer))
+		this.#global.setArray(new Float32Array(this.#local.buffer))
+	}
+
+	get origin() {
+		return this.#origin
+	}
+
+	get local() {
+		return this.#local
+	}
+
+	get global() {
+		return this.#global
 	}
 }
+
 abstract class ObjectConstraint {
 	owner: WPhysicsModel
 
@@ -116,7 +129,7 @@ export class WSpring extends TargetConstraint {
 	
 	solve() {
 		const diff = this.owner.global.t.dif(this.target.global.t)
-		const dl = diff.length
+		const dl = diff.size
 
 		const x = dl - this.L0
 		const f = this.ks * x
@@ -148,7 +161,7 @@ export class WRope extends TargetConstraint {
 
 	solve() {
 		const dir = this.target.global.t.dif(this.owner.global.t)
-		const diff = dir.length
+		const diff = dir.size
 		
 		if (diff > this.length) {
 			const sum = this.owner.mass + this.target.mass
@@ -324,9 +337,9 @@ export class CopyScaleConstraint extends TargetConstraint {
 	}
 }
 
-type transMixMode = 'replace' |
-	'beforeFull' | 'beforeSplit' |
-	'afterFull' | 'afterSplit'
+type transMixMode = 'replace' | 'split' |
+	'beforeFull' | 'afterFull'
+
 export class CopyTransformsConstraint extends TargetConstraint {
 	mixMode: transMixMode
 	ownerRelativity: 'local' | 'global'
@@ -342,30 +355,6 @@ export class CopyTransformsConstraint extends TargetConstraint {
 		targetRelativity?: 'local' | 'global'
 	} = {}) {
 		super(owner, target)
-		
-		/*
-		scale x = sqrt(M11 * M11 + M12 * M12)
-
-		scale y = sqrt(M21 * M21 + M22 * M22) * cos(shear)
-	
-		rotation = atan2(M12, M11)
-	
-		shear (y) = atan2(M22, M21) - PI/2 - rotation
-	
-		translation x = M31
-	
-		translation y = M32
-		*/
-		// M1 = S * R * T; M1 * S2 = M1S2 * R2....
-		// O - (T1, R1, S1); T - (T2, R2, S2)
-		// replace:     S2 R2 T2
-		// beforeFull:  (S2 R2 T2) (S1 R1 T1)
-		// beforeSplit: T2 (R2 (S2 (S1 R1 T1)))
-		// afterFull:   (S1 R1 T1) (S2 R2 T2)
-		// afterSplit:  (((S1 R1 T1) S2) R2) T2
-		// O1: [S1 R1 T1]
-		// O2: [S2 R2 T2] [S1 R1 T1] => [S2* R2* T2*]
-		// O3: [S3 S2*] [R3 R2*] [T3 T2*]
 
 		this.mixMode = mixMode
 		this.ownerRelativity = ownerRelativity
@@ -373,36 +362,106 @@ export class CopyTransformsConstraint extends TargetConstraint {
 	}
 
 	solve() {
+		const og = this.owner.global
+		const o = this.ownerRelativity == 'local'
+			? this.owner.local
+			: og
+
+		const t = this.targetRelativity == 'local'
+			? this.target.local
+			: this.target.global
+
 		switch (this.mixMode) {
 		case 'replace':
-			this.owner.global.set(
-				new Float32Array((this.targetRelativity == 'global')
-					? this.target.global.buffer
-					: this.target.local.buffer
-				)
+			og.setArray(new Float32Array(t.buffer))
+			break
+
+		case 'split':
+			og.scale(
+				t.sx * o.sx,
+				t.sy * o.sy,
+				false
+			)
+			og.skew(t.k + o.k, false)
+			og.rotate(t.r + o.r, false)
+			og.translate(
+				t.tx + o.tx,
+				t.ty + o.ty
 			)
 			break
 
 		case 'beforeFull':
-			// this.owner.global.
-			break
-
-		case 'beforeSplit':
-
+			og.setArray(new Float32Array(t.mult(o).buffer))
 			break
 
 		case 'afterFull':
-
-			break
-
-		case 'afterSplit':
-
+			og.setArray(new Float32Array(o.mult(t).buffer))
 			break
 
 		default:
-			
+			throw new Error('Invalid mix mode', { cause: this.mixMode })
 		}
-
-		
 	}
+}
+
+export class LimitDistanceConstraint extends TargetConstraint {
+	distance: number
+	clampRegion: 'inside' | 'outside' | 'surface'
+	ownerRelativity: 'local' | 'global'
+	targetRelativity: 'local' | 'global'
+
+	constructor(owner: WPhysicsModel, target: WPhysicsModel, {
+		distance = 0,
+		clampRegion = 'inside',
+		ownerRelativity = 'global',
+		targetRelativity = 'global'
+	}: {
+		distance?: number
+		clampRegion?: 'inside' | 'outside' | 'surface'
+		ownerRelativity?: 'local' | 'global'
+		targetRelativity?: 'local' | 'global'
+	} = {}) {
+		super(owner, target)
+
+		this.distance = distance
+		this.clampRegion = clampRegion
+		this.ownerRelativity = ownerRelativity
+		this.targetRelativity = targetRelativity
+	}
+
+	solve() {
+		const og = this.owner.global
+		const o = this.ownerRelativity == 'local'
+			? this.owner.local
+			: og
+
+		const t = this.targetRelativity == 'local'
+			? this.target.local
+			: this.target.global
+
+		const dir = t.t.dif(o.t)
+		const dist = dir.size
+		const diff = dist - this.distance
+
+		if (
+			(this.clampRegion == 'inside' && diff > 0) ||
+			(this.clampRegion == 'outside' && diff < 0) ||
+			(this.clampRegion == 'surface' && diff !== 0)
+		) {
+			const t = dir.scale(diff / dist).sum(og.t)
+			og.translate(t.x ?? 0, t.y ?? 0)
+		}
+	}
+}
+
+export class LimitScaleConstraint extends TargetConstraint {
+
+}
+
+export class LimitRotationConstraint extends TargetConstraint {
+
+}
+
+export class LimitTranslationConstraint extends TargetConstraint {
+
 }

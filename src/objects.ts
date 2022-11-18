@@ -1,27 +1,27 @@
 import {
-	WScene,
-	WRenderer,
-	WAttributeData,
-	WUniformType,
-	WTexSettings,
-	WShader,
+	Scene,
+	Renderer,
+	AttributeData,
+	UniformType,
+	TexSettings,
+	Shader,
 	MatrixData,
-	WMatrixDim
+	MatrixDim
 } from './graphics.js'
 
 import {
 	narrowColor,
 	vec2,
-	WColor,
-	WTri2,
-	WVec2,
-	WLine2
+	Color,
+	Tri2,
+	Vec2,
+	Line2
 } from './math.js'
 
-import { WPhysicsModel } from './physics.js';
+import { PhysicsModel } from './physics.js';
 
 export interface BasicObject {
-	renderer: WRenderer
+	renderer: Renderer
 	zIndex: number
 
 	draw(): void
@@ -30,7 +30,7 @@ export interface BasicObject {
 export class CustomObject implements BasicObject {
 	#drawMode: GLenum
 
-	renderer: WRenderer
+	renderer: Renderer
 	zIndex: number
 
 	protected _vertsCount: number
@@ -45,14 +45,14 @@ export class CustomObject implements BasicObject {
 		drawMode = WebGL2RenderingContext.TRIANGLES,
 		zIndex = 0
 	}: {
-		scene: WScene
-		attributes?: Record<string, WAttributeData>
-		uniforms?: Record<string, WUniformType | MatrixData>
+		scene: Scene
+		attributes?: Record<string, AttributeData>
+		uniforms?: Record<string, UniformType | MatrixData>
 		textures?: {
 			img: TexImageSource
-			settings?: WTexSettings
+			settings?: TexSettings
 		}[]
-		shaders: WShader[]
+		shaders: Shader[]
 		vertsCount: number
 		drawMode?: GLenum
 		zIndex?: number
@@ -61,7 +61,7 @@ export class CustomObject implements BasicObject {
 		this.#drawMode = drawMode
 		this.zIndex = zIndex
 
-		this.renderer = new WRenderer({ scene, shaders })
+		this.renderer = new Renderer({ scene, shaders })
 
 		this.renderer.init({ uniforms, attributes, textures })
 	}
@@ -75,9 +75,9 @@ export class CustomObject implements BasicObject {
 	}
 	setAttribute(
 		name: string,
-		value: WAttributeData['data'],
-		type: WAttributeData['type'],
-		length: WAttributeData['length']
+		value: AttributeData['data'],
+		type: AttributeData['type'],
+		length: AttributeData['length']
 	) {
 		this.renderer.setAttribute(name, value, type, length)
 	}
@@ -85,12 +85,12 @@ export class CustomObject implements BasicObject {
 	getUniform(name: string) {
 		return this.renderer.getUniform(name)
 	}
-	setUniform(name: string, value: WUniformType): void
-	setUniform(name: string, matrix: Float32Array, dim: WMatrixDim): void
+	setUniform(name: string, value: UniformType): void
+	setUniform(name: string, matrix: Float32Array, dim: MatrixDim): void
 	setUniform(
 		name: string,
-		value: WUniformType,
-		matrix?: WMatrixDim
+		value: UniformType,
+		matrix?: MatrixDim
 	) {
 		this.renderer.setUniform(name, <Float32Array>value, matrix)
 	}
@@ -101,7 +101,7 @@ export class CustomObject implements BasicObject {
 	setTexture(
 		id: number,
 		img: TexImageSource,
-		settings?: WTexSettings
+		settings?: TexSettings
 	) {
 		this.renderer.setTexture({ id, img, settings })
 	}
@@ -111,8 +111,8 @@ export class CustomObject implements BasicObject {
 	}
 }
 
-export class WPositionedObject extends CustomObject {
-	#physics: WPhysicsModel
+export class PositionedObject extends CustomObject {
+	#physics: PhysicsModel
 	#ratio: number
 
 	protected _tris: Float32Array
@@ -124,19 +124,19 @@ export class WPositionedObject extends CustomObject {
 		textures,
 		shaders,
 		tris,
-		physicsModel = new WPhysicsModel(),
+		physicsModel = new PhysicsModel(),
 		zIndex
 	}: {
-		scene: WScene
-		attributes?: Record<string, WAttributeData>
-		uniforms?: Record<string, WUniformType>
+		scene: Scene
+		attributes?: Record<string, AttributeData>
+		uniforms?: Record<string, UniformType>
 		textures?: {
 			img: TexImageSource
-			settings?: WTexSettings
+			settings?: TexSettings
 		}[]
-		shaders: WShader[]
-		tris: WTri2<GLfloat>[]
-		physicsModel?: WPhysicsModel
+		shaders: Shader[]
+		tris: Tri2<GLfloat>[]
+		physicsModel?: PhysicsModel
 		zIndex?: number
 	}) {
 		super({
@@ -168,14 +168,14 @@ export class WPositionedObject extends CustomObject {
 	getTriangle(id: number) {
 		const arr = new Float32Array(this._tris.buffer, 24 * id, 6)
 
-		return <WTri2<GLfloat>>[
+		return <Tri2<GLfloat>>[
 			[arr[0], arr[1]],
 			[arr[2], arr[3]],
 			[arr[4], arr[5]]
 		]
 	}
 
-	setTriangle(id: number, triangle: WTri2<GLfloat>) {
+	setTriangle(id: number, triangle: Tri2<GLfloat>) {
 		if (id < 0 || id >= this._vertsCount / 2) return false
 
 		this._tris.set(triangle.flat(2), id * 6)
@@ -184,7 +184,7 @@ export class WPositionedObject extends CustomObject {
 		return true
 	}
 
-	addTriangle(triangle: WTri2<GLfloat>) {
+	addTriangle(triangle: Tri2<GLfloat>) {
 		const arr = new Float32Array((this._vertsCount / 2 + 1) * 6)
 		arr.set(new Float32Array(this._tris.buffer))
 		arr.set(Float32Array.from(triangle.flat(2)), this._vertsCount * 2)
@@ -221,7 +221,7 @@ export class WPositionedObject extends CustomObject {
 	get physics() {
 		return this.#physics
 	}
-	set physics(v: WPhysicsModel) {
+	set physics(v: PhysicsModel) {
 		this.#physics = v
 		this.setUniform('u_transform', new Float32Array(v.global.buffer), '3')
 	}
@@ -235,13 +235,13 @@ export class WPositionedObject extends CustomObject {
 	}
 }
 
-export class WOneColorObject extends WPositionedObject {
+export class OneColorObject extends PositionedObject {
 	color: Float32Array
 	
 	constructor(
-		scene: WScene,
-		color: WColor,
-		tris: WTri2<GLfloat>[],
+		scene: Scene,
+		color: Color,
+		tris: Tri2<GLfloat>[],
 		zIndex?: number
 	) {
 		const clr = Float32Array.from(narrowColor(color))
@@ -297,7 +297,7 @@ export class WOneColorObject extends WPositionedObject {
 	}
 }
 
-export class WTexPositionedObject extends WPositionedObject {
+export class TexPositionedObject extends PositionedObject {
 	protected _uvmap: Float32Array
 
 	constructor({
@@ -310,16 +310,16 @@ export class WTexPositionedObject extends WPositionedObject {
 		uvmap,
 		zIndex
 	}: {
-		scene: WScene
-		attributes?: Record<string, WAttributeData>
-		uniforms?: Record<string, WUniformType>
+		scene: Scene
+		attributes?: Record<string, AttributeData>
+		uniforms?: Record<string, UniformType>
 		textures?: {
 			img: TexImageSource
-			settings?: WTexSettings
+			settings?: TexSettings
 		}[]
-		shaders: WShader[]
-		tris: WTri2<GLfloat>[]
-		uvmap: WTri2<GLfloat>[]
+		shaders: Shader[]
+		tris: Tri2<GLfloat>[]
+		uvmap: Tri2<GLfloat>[]
 		zIndex?: number
 	}) {
 		super({
@@ -347,14 +347,14 @@ export class WTexPositionedObject extends WPositionedObject {
 	getUVTriangle(id: number) {
 		const arr = new Float32Array(this._uvmap.buffer, 24 * id, 6)
 
-		return <WTri2<GLfloat>>[
+		return <Tri2<GLfloat>>[
 			[arr[0], arr[1]],
 			[arr[2], arr[3]],
 			[arr[4], arr[5]]
 		]
 	}
 
-	setUVTriangle(id: number, triangle: WTri2<GLfloat>) {
+	setUVTriangle(id: number, triangle: Tri2<GLfloat>) {
 		if (id < 0 || id >= this._uvmap.byteLength / 24) return false
 
 		this._uvmap.set(triangle.flat(2), id * 6)
@@ -363,7 +363,7 @@ export class WTexPositionedObject extends WPositionedObject {
 		return true
 	}
 
-	addUVTriangle(triangle: WTri2<GLfloat>) {
+	addUVTriangle(triangle: Tri2<GLfloat>) {
 		const arr = new Float32Array((this._uvmap.byteLength / 24 + 1) * 6)
 		arr.set(new Float32Array(this._uvmap.buffer))
 		arr.set(Float32Array.from(triangle.flat(2)), this._uvmap.byteLength / 4)
@@ -396,14 +396,14 @@ export class WTexPositionedObject extends WPositionedObject {
 	}
 }
 
-export class WTextureObject extends WTexPositionedObject {
+export class TextureObject extends TexPositionedObject {
 	img: TexImageSource
 	
 	constructor(
 		img: TexImageSource,
-		scene: WScene,
-		tris: WTri2<GLfloat>[],
-		uvmap: WTri2<GLfloat>[],
+		scene: Scene,
+		tris: Tri2<GLfloat>[],
+		uvmap: Tri2<GLfloat>[],
 		zIndex?: number
 	) {
 		super({
@@ -476,7 +476,7 @@ export class WTextureObject extends WTexPositionedObject {
 	}
 }
 
-export class LinesObject extends WOneColorObject {
+export class LinesObject extends OneColorObject {
 	constructor({
 		scene,
 		lines,
@@ -484,13 +484,13 @@ export class LinesObject extends WOneColorObject {
 		color = '#000',
 		zIndex
 	}: {
-		scene: WScene
-		lines: WLine2<number>[]
+		scene: Scene
+		lines: Line2<number>[]
 		width?: number
-		color?: WColor,
+		color?: Color,
 		zIndex?: number
 	}) {
-		const verts: WTri2<number>[] = []
+		const verts: Tri2<number>[] = []
 
 		for (const line of lines) {
 			const v1 = vec2(...line[0])
@@ -516,7 +516,7 @@ export class LinesObject extends WOneColorObject {
 	}
 }
 
-export class CircleObject extends WPositionedObject {
+export class CircleObject extends PositionedObject {
 	color: Float32Array
 
 	constructor({
@@ -527,11 +527,11 @@ export class CircleObject extends WPositionedObject {
 		color = '#000',
 		zIndex
 	}: {
-		scene: WScene
+		scene: Scene
 		innerR?: number,
-		location: WVec2<number>
+		location: Vec2<number>
 		scale?: number
-		color?: WColor
+		color?: Color
 		zIndex?: number
 	}) {
 		const clr = Float32Array.from(narrowColor(color))
@@ -617,7 +617,7 @@ export class CircleObject extends WPositionedObject {
 					[-1, -1]
 				]
 			],
-			physicsModel: new WPhysicsModel({
+			physicsModel: new PhysicsModel({
 				location: vec2(...location),
 				scale: vec2(scale)
 			}),

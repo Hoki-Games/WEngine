@@ -1,6 +1,6 @@
 import { WScene } from './graphics.js';
 import { WOneColorObject, WPositionedObject } from './objects.js';
-import { LimitDistanceConstraint } from './physics.js';
+import { LimitLocationConstraint } from './physics.js';
 import { RegularPolygon } from './shapes.js';
 window.addEventListener('load', async () => {
     const display = document.getElementById('display');
@@ -70,8 +70,11 @@ window.addEventListener('load', async () => {
         ]], 1));
     scene.objects['pent'].physics.local.scale(.5, .5);
     scene.objects['hex'].physics.local.scale(.25, .25);
-    const limitDist = globalThis.limitDist = new LimitDistanceConstraint(scene.objects.pent.physics, scene.objects.hex.physics, {
-        distance: .2
+    const limitLoc = globalThis.limitLoc = new LimitLocationConstraint(scene.objects.pent.physics, {
+        minX: -.5,
+        minY: -.5,
+        maxX: .5,
+        maxY: .5
     });
     window.addEventListener('resize', resize);
     resize();
@@ -82,7 +85,7 @@ window.addEventListener('load', async () => {
         const dt = (time - lastTime) / 1000;
         lastTime = time;
         scene.updateLocations(dt);
-        limitDist.solve();
+        limitLoc.solve();
         scene.draw();
         requestAnimationFrame(draw);
     };

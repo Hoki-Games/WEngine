@@ -1,10 +1,10 @@
-import { vec2, Vector2, WTransformMatrix3, WVec2, clamp } from './math.js'
+import { vec2, Vector2, TransformMatrix3, Vec2, clamp } from './math.js'
 
-export class WPhysicsModel {
+export class PhysicsModel {
 	#origin: Float32Array
 
-	#local: WTransformMatrix3
-	#global: WTransformMatrix3
+	#local: TransformMatrix3
+	#global: TransformMatrix3
 
 	velocity: Vector2 // m/s
 	acceleration: Vector2 // m/s²
@@ -37,7 +37,7 @@ export class WPhysicsModel {
 		this.acceleration = acceleration
 		this.force = vec2(0)
 
-		this.#local = new WTransformMatrix3({
+		this.#local = new TransformMatrix3({
 			translate: location,
 			rotate: rotation,
 			scale,
@@ -91,9 +91,9 @@ export class WPhysicsModel {
 }
 
 abstract class ObjectConstraint {
-	owner: WPhysicsModel
+	owner: PhysicsModel
 
-	constructor(owner: WPhysicsModel) {
+	constructor(owner: PhysicsModel) {
 		this.owner = owner
 	}
 
@@ -101,20 +101,20 @@ abstract class ObjectConstraint {
 }
 
 abstract class TargetConstraint extends ObjectConstraint {
-	target: WPhysicsModel
+	target: PhysicsModel
 
-	constructor(owner: WPhysicsModel, target: WPhysicsModel) {
+	constructor(owner: PhysicsModel, target: PhysicsModel) {
 		super(owner)
 		
 		this.target = target
 	}
 }
 
-export class WSpring extends TargetConstraint {
+export class Spring extends TargetConstraint {
 	L0: number
 	ks: number
 
-	constructor(owner: WPhysicsModel, target: WPhysicsModel, {
+	constructor(owner: PhysicsModel, target: PhysicsModel, {
 		L0,
 		ks
 	}: {
@@ -142,11 +142,11 @@ export class WSpring extends TargetConstraint {
 	}
 }
 
-export class WRope extends TargetConstraint {
+export class Rope extends TargetConstraint {
 	length: number
 	bounce: number
 
-	constructor(owner: WPhysicsModel, target: WPhysicsModel, {
+	constructor(owner: PhysicsModel, target: PhysicsModel, {
 		length,
 		bounce
 	}: {
@@ -202,21 +202,21 @@ export class WRope extends TargetConstraint {
 }
 
 export class CopyLocationConstraint extends TargetConstraint {
-	axes: WVec2<boolean>
-	invert: WVec2<boolean>
+	axes: Vec2<boolean>
+	invert: Vec2<boolean>
 	offset: boolean
 	ownerRelativity: 'local' | 'global'
 	targetRelativity: 'local' | 'global'
 
-	constructor(owner: WPhysicsModel, target: WPhysicsModel, {
+	constructor(owner: PhysicsModel, target: PhysicsModel, {
 		axes = [true, true],
 		invert = [false, false],
 		offset = false,
 		ownerRelativity = 'global',
 		targetRelativity = 'global'
 	}: {
-		axes?: WVec2<boolean>
-		invert?: WVec2<boolean>
+		axes?: Vec2<boolean>
+		invert?: Vec2<boolean>
 		offset?: boolean
 		ownerRelativity?: 'local' | 'global'
 		targetRelativity?: 'local' | 'global'
@@ -259,7 +259,7 @@ export class CopyRotationConstraint extends TargetConstraint {
 	ownerRelativity: 'local' | 'global'
 	targetRelativity: 'local' | 'global'
 
-	constructor(owner: WPhysicsModel, target: WPhysicsModel, {
+	constructor(owner: PhysicsModel, target: PhysicsModel, {
 		invert = false,
 		offset = false,
 		ownerRelativity = 'global',
@@ -294,18 +294,18 @@ export class CopyRotationConstraint extends TargetConstraint {
 }
 
 export class CopyScaleConstraint extends TargetConstraint {
-	axes: WVec2<boolean>
+	axes: Vec2<boolean>
 	offset: boolean
 	ownerRelativity: 'local' | 'global'
 	targetRelativity: 'local' | 'global'
 
-	constructor(owner: WPhysicsModel, target: WPhysicsModel, {
+	constructor(owner: PhysicsModel, target: PhysicsModel, {
 		axes = [true, true],
 		offset = false,
 		ownerRelativity = 'global',
 		targetRelativity = 'global'
 	}: {
-		axes?: WVec2<boolean>
+		axes?: Vec2<boolean>
 		offset?: boolean
 		ownerRelativity?: 'local' | 'global'
 		targetRelativity?: 'local' | 'global'
@@ -337,20 +337,20 @@ export class CopyScaleConstraint extends TargetConstraint {
 	}
 }
 
-type transMixMode = 'replace' | 'split' |
+type TransMixMode = 'replace' | 'split' |
 	'beforeFull' | 'afterFull'
 
 export class CopyTransformsConstraint extends TargetConstraint {
-	mixMode: transMixMode
+	mixMode: TransMixMode
 	ownerRelativity: 'local' | 'global'
 	targetRelativity: 'local' | 'global'
 
-	constructor(owner: WPhysicsModel, target: WPhysicsModel, {
+	constructor(owner: PhysicsModel, target: PhysicsModel, {
 		mixMode = 'replace',
 		ownerRelativity = 'global',
 		targetRelativity = 'global'
 	}: {
-		mixMode?: transMixMode
+		mixMode?: TransMixMode
 		ownerRelativity?: 'local' | 'global'
 		targetRelativity?: 'local' | 'global'
 	} = {}) {
@@ -410,7 +410,7 @@ export class LimitDistanceConstraint extends TargetConstraint {
 	ownerRelativity: 'local' | 'global'
 	targetRelativity: 'local' | 'global'
 
-	constructor(owner: WPhysicsModel, target: WPhysicsModel, {
+	constructor(owner: PhysicsModel, target: PhysicsModel, {
 		distance = 0,
 		clampRegion = 'inside',
 		ownerRelativity = 'global',
@@ -461,7 +461,7 @@ export class LimitLocationConstraint extends ObjectConstraint {
 	min: Vector2
 	max: Vector2
 
-	constructor(owner: WPhysicsModel, {
+	constructor(owner: PhysicsModel, {
 		ownerRelativity = 'global',
 		influence = 1,
 		minX = -Infinity,

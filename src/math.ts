@@ -1,39 +1,39 @@
 export type FixedArray<T, L extends number> =
 	[T, ...T[]] & { readonly length: L }
 
-export type WVec2<T1, T2 = T1> = [T1, T2]
-export type WVec3<T1, T2 = T1, T3 = T1> = [T1, T2, T3]
-export type WVec4<T1, T2 = T1, T3 = T1, T4 = T1> = [T1, T2, T3, T4]
+export type Vec2<T1, T2 = T1> = [T1, T2]
+export type Vec3<T1, T2 = T1, T3 = T1> = [T1, T2, T3]
+export type Vec4<T1, T2 = T1, T3 = T1, T4 = T1> = [T1, T2, T3, T4]
 
-export type WLine2<T1, T2 = T1> = FixedArray<WVec2<T1, T2>, 2>
-export type WLine3<T1, T2 = T1, T3 = T1> = FixedArray<WVec3<T1, T2, T3>, 2>
-export type WLine4<T1, T2 = T1, T3 = T1, T4 = T1> =
-	FixedArray<WVec4<T1, T2, T3, T4>, 2>
+export type Line2<T1, T2 = T1> = FixedArray<Vec2<T1, T2>, 2>
+export type Line3<T1, T2 = T1, T3 = T1> = FixedArray<Vec3<T1, T2, T3>, 2>
+export type Line4<T1, T2 = T1, T3 = T1, T4 = T1> =
+	FixedArray<Vec4<T1, T2, T3, T4>, 2>
 
-export type WTri2<T1, T2 = T1> = FixedArray<WVec2<T1, T2>, 3>
-export type WTri3<T1, T2 = T1, T3 = T1> = FixedArray<WVec3<T1, T2, T3>, 3>
-export type WTri4<T1, T2 = T1, T3 = T1, T4 = T1> =
-	FixedArray<WVec4<T1, T2, T3, T4>, 3>
+export type Tri2<T1, T2 = T1> = FixedArray<Vec2<T1, T2>, 3>
+export type Tri3<T1, T2 = T1, T3 = T1> = FixedArray<Vec3<T1, T2, T3>, 3>
+export type Tri4<T1, T2 = T1, T3 = T1, T4 = T1> =
+	FixedArray<Vec4<T1, T2, T3, T4>, 3>
 
-type WColorObject = {
+type ColorObject = {
 	r: GLclampf
 	g: GLclampf
 	b: GLclampf
 	a: GLclampf
 }
-export type WColor = WColorObject | WVec4<GLclampf> | `#${string}`
+export type Color = ColorObject | Vec4<GLclampf> | `#${string}`
 
-type WDimensionObject = {
+type DimensionObject = {
 	x: GLint
 	y: GLint
 	width: GLsizei
 	height: GLsizei
 }
-export type WDimension = WDimensionObject
-	| WVec4<GLint, GLint, GLsizei, GLsizei>
+export type Dimension = DimensionObject
+	| Vec4<GLint, GLint, GLsizei, GLsizei>
 
-export const narrowColor = (color: WColor): WVec4<GLclampf> => {
-	let ret: WVec4<GLclampf>
+export const narrowColor = (color: Color): Vec4<GLclampf> => {
+	let ret: Vec4<GLclampf>
 
 	if (Array.isArray(color)) ret = [...color]
 	else if (typeof color == 'object')
@@ -46,9 +46,9 @@ export const narrowColor = (color: WColor): WVec4<GLclampf> => {
 		const rgba8 = new RegExp(`^#${b8}?$`).exec(color)
 
 		if (rgba4) ret = 
-			<WVec4<GLclampf>>rgba4.slice(1).map(v => parseInt(v, 16) / 15)
+			<Vec4<GLclampf>>rgba4.slice(1).map(v => parseInt(v, 16) / 15)
 		else if (rgba8) ret = 
-			<WVec4<GLclampf>>rgba8.slice(1).map(v => parseInt(v, 16) / 255)
+			<Vec4<GLclampf>>rgba8.slice(1).map(v => parseInt(v, 16) / 255)
 		else throw new Error('Invalid color data', { cause: color })
 	}
 
@@ -58,8 +58,8 @@ export const narrowColor = (color: WColor): WVec4<GLclampf> => {
 }
 	
 
-export const narrowDimension = (color: WDimension):
-	WVec4<GLint, GLint, GLsizei, GLsizei> => Array.isArray(color)
+export const narrowDimension = (color: Dimension):
+	Vec4<GLint, GLint, GLsizei, GLsizei> => Array.isArray(color)
 	? [...color]
 	: [color.x, color.y, color.width, color.height]
 
@@ -236,13 +236,13 @@ export class Vector2 implements Iterable<number> {
 	}
 }
 
-export class WMatrix3 {
+export class Matrix3 {
 	protected _data: Float32Array
 
 	constructor()
-	constructor(data: WTri3<number>)
+	constructor(data: Tri3<number>)
 	constructor(data: FixedArray<number, 9>)
-	constructor(data?: WTri3<number> | FixedArray<number, 9>) {
+	constructor(data?: Tri3<number> | FixedArray<number, 9>) {
 		this._data = Float32Array.from(data?.flat() ?? [
 			1, 0, 0,
 			0, 1, 0,
@@ -250,8 +250,8 @@ export class WMatrix3 {
 		])
 	}
 
-	get(): WTri3<number>
-	get(col: number): WVec3<number>
+	get(): Tri3<number>
+	get(col: number): Vec3<number>
 	get(col: number, row: number): number
 	get(col?: number, row?: number) {
 		if (typeof row == 'number') {
@@ -268,12 +268,12 @@ export class WMatrix3 {
 		}
 	}
 
-	set(value: WTri3<number>): this
-	set(col: number, value: WVec3<number>): this
+	set(value: Tri3<number>): this
+	set(col: number, value: Vec3<number>): this
 	set(col: number, row: number, value: number): this
 	set(
-		col: number | WTri3<number>,
-		row?: number | WVec3<number>,
+		col: number | Tri3<number>,
+		row?: number | Vec3<number>,
 		value?: number
 	) {
 		if (typeof value == 'number') {
@@ -288,10 +288,10 @@ export class WMatrix3 {
 	}
 
 	copy() {
-		return new WMatrix3(this.get())
+		return new Matrix3(this.get())
 	}
 
-	sum(...mat: WMatrix3[]) {
+	sum(...mat: Matrix3[]) {
 		const ret = <FixedArray<number, 9>>[...this._data]
 
 		mat.forEach(m => {
@@ -300,13 +300,13 @@ export class WMatrix3 {
 			})
 		})
 		
-		return new WMatrix3(ret)
+		return new Matrix3(ret)
 	}
 
-	mult(mat: WMatrix3) {
+	mult(mat: Matrix3) {
 		const a = this.get()
 		const b = mat.get()
-		const r: WTri3<number> = [
+		const r: Tri3<number> = [
 			[0, 0, 0],
 			[0, 0, 0],
 			[0, 0, 0]
@@ -320,11 +320,11 @@ export class WMatrix3 {
 			}
 		}
 
-		return new WMatrix3(r)
+		return new Matrix3(r)
 	}
 
 	transpose() {
-		const ret: WTri3<number> = [
+		const ret: Tri3<number> = [
 			[0, 0, 0],
 			[0, 0, 0],
 			[0, 0, 0]
@@ -342,7 +342,7 @@ export class WMatrix3 {
 	}
 }
 
-export class WTransformMatrix3 extends WMatrix3 {
+export class TransformMatrix3 extends Matrix3 {
 	#translate: Vector2
 	#direct: Vector2
 	#skew: number
@@ -432,8 +432,8 @@ export class WTransformMatrix3 extends WMatrix3 {
 		return this
 	}
 
-	rotate(r: number, recalc?: boolean): WTransformMatrix3
-	rotate(x: number, y: number, recalc?: boolean): WTransformMatrix3
+	rotate(r: number, recalc?: boolean): TransformMatrix3
+	rotate(x: number, y: number, recalc?: boolean): TransformMatrix3
 	rotate(v0: number, v1: number | boolean = true, v2 = true) {
 		if (typeof v1 == 'number') {
 			this.#direct = vec2(v0, v1).norm
@@ -487,7 +487,7 @@ export class WTransformMatrix3 extends WMatrix3 {
 	}
 
 	copy() {
-		return new WTransformMatrix3(this._data)
+		return new TransformMatrix3(this._data)
 	}
 
 	setArray(value: ArrayLike<number>, offset?: number) {
@@ -597,7 +597,7 @@ export const bezier = (x1: number, y1: number, x2: number, y2: number) => {
 	if (x1 < 0 || x1 > 1) throw new Error('x1 is out of bounds', { cause: x1 })
 	if (x2 < 0 || x2 > 1) throw new Error('x2 is out of bounds', { cause: x2 })
 	
-	const arr: WVec2<number>[] = []
+	const arr: Vec2<number>[] = []
 
 	const pos = (a: number, b: number, t: number) =>
 		t * (3 * a * (1 - t) ** 2 + t * (3 * b * (1 - t) + t))

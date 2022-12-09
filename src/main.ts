@@ -1,12 +1,12 @@
-import { WScene } from './graphics.js'
-import { WOneColorObject, WPositionedObject } from './objects.js'
+import { Scene } from './graphics.js'
+import { OneColorObject, PositionedObject } from './objects.js'
 import { LimitDistanceConstraint, LimitLocationConstraint } from './physics.js'
 import { RegularPolygon } from './shapes.js'
 
 window.addEventListener('load', async () => {
 	const display = <HTMLCanvasElement>document.getElementById('display')
 
-	const scene = globalThis.scene = new WScene({
+	const scene = globalThis.scene = new Scene({
 		canvas: display,
 		settings: {
 			backgroundColor: '#150E1C',
@@ -29,7 +29,7 @@ window.addEventListener('load', async () => {
 
 		for (const name in scene.objects) {
 			const obj = scene.objects[name]
-			if (obj instanceof WPositionedObject) {
+			if (obj instanceof PositionedObject) {
 				obj.ratio = ratio
 			}
 		}
@@ -47,7 +47,7 @@ window.addEventListener('load', async () => {
 		vertexCount: 5
 	})
 
-	scene.addObject('hex', new WOneColorObject(scene, '#03fcc6', [[
+	scene.addObject('hex', new OneColorObject(scene, '#03fcc6', [[
 		hex.vertices[0].arr,
 		hex.vertices[1].arr,
 		hex.vertices[5].arr
@@ -65,7 +65,7 @@ window.addEventListener('load', async () => {
 		hex.vertices[3].arr
 	]], 0))
 
-	scene.addObject('pent', new WOneColorObject(scene, '#5ab03f', [[
+	scene.addObject('pent', new OneColorObject(scene, '#5ab03f', [[
 		pent.vertices[0].arr,
 		pent.vertices[2].arr,
 		pent.vertices[1].arr
@@ -79,11 +79,11 @@ window.addEventListener('load', async () => {
 		pent.vertices[3].arr
 	]], 1))
 
-	;(<WOneColorObject>scene.objects['pent']).physics.local.scale(.5, .5)
-	;(<WOneColorObject>scene.objects['hex']).physics.local.scale(.25, .25)
+	;(<OneColorObject>scene.objects['pent']).physics.local.scale(.5, .5)
+	;(<OneColorObject>scene.objects['hex']).physics.local.scale(.25, .25)
 
 	const limitLoc = globalThis.limitLoc = new LimitLocationConstraint(
-		(<WPositionedObject>scene.objects.pent).physics, {
+		(<PositionedObject>scene.objects.pent).physics, {
 			minX: -.5,
 			minY: -.5,
 			maxX: .5,

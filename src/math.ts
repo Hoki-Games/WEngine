@@ -1,39 +1,39 @@
 export type FixedArray<T, L extends number> =
 	[T, ...T[]] & { readonly length: L }
 
-export type WVec2<T1, T2 = T1> = [T1, T2]
-export type WVec3<T1, T2 = T1, T3 = T1> = [T1, T2, T3]
-export type WVec4<T1, T2 = T1, T3 = T1, T4 = T1> = [T1, T2, T3, T4]
+export type Vec2<T1, T2 = T1> = [T1, T2]
+export type Vec3<T1, T2 = T1, T3 = T1> = [T1, T2, T3]
+export type Vec4<T1, T2 = T1, T3 = T1, T4 = T1> = [T1, T2, T3, T4]
 
-export type WLine2<T1, T2 = T1> = FixedArray<WVec2<T1, T2>, 2>
-export type WLine3<T1, T2 = T1, T3 = T1> = FixedArray<WVec3<T1, T2, T3>, 2>
-export type WLine4<T1, T2 = T1, T3 = T1, T4 = T1> =
-	FixedArray<WVec4<T1, T2, T3, T4>, 2>
+export type Line2<T1, T2 = T1> = FixedArray<Vec2<T1, T2>, 2>
+export type Line3<T1, T2 = T1, T3 = T1> = FixedArray<Vec3<T1, T2, T3>, 2>
+export type Line4<T1, T2 = T1, T3 = T1, T4 = T1> =
+	FixedArray<Vec4<T1, T2, T3, T4>, 2>
 
-export type WTri2<T1, T2 = T1> = FixedArray<WVec2<T1, T2>, 3>
-export type WTri3<T1, T2 = T1, T3 = T1> = FixedArray<WVec3<T1, T2, T3>, 3>
-export type WTri4<T1, T2 = T1, T3 = T1, T4 = T1> =
-	FixedArray<WVec4<T1, T2, T3, T4>, 3>
+export type Tri2<T1, T2 = T1> = FixedArray<Vec2<T1, T2>, 3>
+export type Tri3<T1, T2 = T1, T3 = T1> = FixedArray<Vec3<T1, T2, T3>, 3>
+export type Tri4<T1, T2 = T1, T3 = T1, T4 = T1> =
+	FixedArray<Vec4<T1, T2, T3, T4>, 3>
 
-type WColorObject = {
+type ColorObject = {
 	r: GLclampf
 	g: GLclampf
 	b: GLclampf
 	a: GLclampf
 }
-export type WColor = WColorObject | WVec4<GLclampf> | `#${string}`
+export type Color = ColorObject | Vec4<GLclampf> | `#${string}`
 
-type WDimensionObject = {
+type DimensionObject = {
 	x: GLint
 	y: GLint
 	width: GLsizei
 	height: GLsizei
 }
-export type WDimension = WDimensionObject
-	| WVec4<GLint, GLint, GLsizei, GLsizei>
+export type Dimension = DimensionObject
+	| Vec4<GLint, GLint, GLsizei, GLsizei>
 
-export const narrowColor = (color: WColor): WVec4<GLclampf> => {
-	let ret: WVec4<GLclampf>
+export const narrowColor = (color: Color): Vec4<GLclampf> => {
+	let ret: Vec4<GLclampf>
 
 	if (Array.isArray(color)) ret = [...color]
 	else if (typeof color == 'object')
@@ -46,9 +46,9 @@ export const narrowColor = (color: WColor): WVec4<GLclampf> => {
 		const rgba8 = new RegExp(`^#${b8}?$`).exec(color)
 
 		if (rgba4) ret = 
-			<WVec4<GLclampf>>rgba4.slice(1).map(v => parseInt(v, 16) / 15)
+			<Vec4<GLclampf>>rgba4.slice(1).map(v => parseInt(v, 16) / 15)
 		else if (rgba8) ret = 
-			<WVec4<GLclampf>>rgba8.slice(1).map(v => parseInt(v, 16) / 255)
+			<Vec4<GLclampf>>rgba8.slice(1).map(v => parseInt(v, 16) / 255)
 		else throw new Error('Invalid color data', { cause: color })
 	}
 
@@ -58,8 +58,8 @@ export const narrowColor = (color: WColor): WVec4<GLclampf> => {
 }
 	
 
-export const narrowDimension = (color: WDimension):
-	WVec4<GLint, GLint, GLsizei, GLsizei> => Array.isArray(color)
+export const narrowDimension = (color: Dimension):
+	Vec4<GLint, GLint, GLsizei, GLsizei> => Array.isArray(color)
 	? [...color]
 	: [color.x, color.y, color.width, color.height]
 
@@ -102,7 +102,7 @@ export class Vector2 implements Iterable<number> {
 	}
 
 	/**
-	 * Calculates the difference between gien vector and this.
+	 * Calculates the difference between given vector and this.
 	 */
 	dif(v: Vector2) {
 		return vec2(this.x - v.x, this.y - v.y)
@@ -188,7 +188,7 @@ export class Vector2 implements Iterable<number> {
 	 * 
 	 * _|A|_
 	 */
-	get length() {
+	get size() {
 		return Math.hypot(this.x, this.y)
 	}
 
@@ -203,7 +203,7 @@ export class Vector2 implements Iterable<number> {
 	 * Returns this vector but with length equal to 1.
 	 */
 	get norm() {
-		return this.scale(1 / this.length)
+		return this.scale(1 / this.size)
 	}
 
 	/**
@@ -211,6 +211,14 @@ export class Vector2 implements Iterable<number> {
 	 */
 	get rotation() {
 		return Math.atan2(this.y, this.x)
+	}
+
+	get arr(): [number, number] {
+		return [this.x, this.y]
+	}
+
+	get length(): 2 {
+		return 2
 	}
 
 	get [Symbol.iterator]() {
@@ -228,156 +236,379 @@ export class Vector2 implements Iterable<number> {
 	}
 }
 
-export class WMatrix3 {
-	protected _data: WTri3<number>
+export class Matrix3 {
+	protected _data: Float32Array
 
-	constructor(data?: WTri3<number>) {
-		this._data = data ?? [
-			[1, 0, 0],
-			[0, 1, 0],
-			[0, 0, 1]
-		]
+	constructor()
+	constructor(data: Tri3<number>)
+	constructor(data: FixedArray<number, 9>)
+	constructor(data?: Tri3<number> | FixedArray<number, 9>) {
+		this._data = Float32Array.from(data?.flat() ?? [
+			1, 0, 0,
+			0, 1, 0,
+			0, 0, 1
+		])
 	}
 
-	get(): WTri3<number>
-	get(col: number): WVec3<number>
+	get(): Tri3<number>
+	get(col: number): Vec3<number>
 	get(col: number, row: number): number
 	get(col?: number, row?: number) {
 		if (typeof row == 'number') {
-			return this._data[col][row]
+			return this._data[col * 3 + row]
 		} else if (typeof col == 'number') {
-			return [...this._data[col]]
+			const colI = col * 3
+			return [...this._data.subarray(colI, colI + 3)]
 		} else {
-			const [a, b, c] = this._data
-			return [[...a], [...b], [...c]]
+			return [
+				[...this._data.subarray(0, 3)],
+				[...this._data.subarray(3, 6)],
+				[...this._data.subarray(6, 9)]
+			]
 		}
 	}
 
-	set(value: WTri3<number>): void
-	set(col: number, value: WVec3<number>): void
-	set(col: number, row: number, value: number): void
+	set(value: Tri3<number>): this
+	set(col: number, value: Vec3<number>): this
+	set(col: number, row: number, value: number): this
 	set(
-		col: number | WTri3<number>,
-		row?: number | WVec3<number>,
+		col: number | Tri3<number>,
+		row?: number | Vec3<number>,
 		value?: number
 	) {
 		if (typeof value == 'number') {
-			this._data[<number>col][<number>row] = value
+			this._data[+col * 3 + +row] = value
 		} else if (Array.isArray(row)) {
-			this._data[<number>col] = row
+			this._data.set(row, +col * 3)
 		} else if (Array.isArray(col)) {
-			this._data = col
+			this._data.set(col.flat())
 		} else throw new Error('Invalid data')
+
+		return this
 	}
 
 	copy() {
-		return new WMatrix3(this.get())
+		return new Matrix3(this.get())
 	}
 
-	sum(...mat: WMatrix3[]) {
-		const ret = []
+	sum(...mat: Matrix3[]) {
+		const ret = <FixedArray<number, 9>>[...this._data]
 
-		this._data.forEach((_, col) => {
-			ret.push([])
-			this._data[col].forEach((v1, row) => { 
-				ret[col].push(mat.reduce((t, v) => t + v[col][row], v1))
+		mat.forEach(m => {
+			m._data.forEach((v, i) => {
+				ret[i] += v
 			})
 		})
 		
-		return new WMatrix3(<WTri3<number>>ret)
+		return new Matrix3(ret)
 	}
 
-	mult(mat: WMatrix3) {
+	mult(mat: Matrix3) {
 		const a = this.get()
 		const b = mat.get()
+		const r: Tri3<number> = [
+			[0, 0, 0],
+			[0, 0, 0],
+			[0, 0, 0]
+		]
 
-		// TODO: Turn to loop calc
+		for (let i = 0; i < 3; i++) {
+			for (let j = 0; j < 3; j++) {
+				r[j][i] = a[0][i] * b[j][0] +
+					a[1][i] * b[j][1] +
+					a[2][i] * b[j][2]
+			}
+		}
 
-		const r00 = a[0][0] * b[0][0] + a[1][0] * b[0][1] + a[2][0] * b[0][2]
-		const r10 = a[0][0] * b[1][0] + a[1][0] * b[1][1] + a[2][0] * b[1][2]
-		const r20 = a[0][0] * b[2][0] + a[1][0] * b[2][1] + a[2][0] * b[2][2]
-
-		const r01 = a[0][1] * b[0][0] + a[1][1] * b[0][1] + a[2][1] * b[0][2]
-		const r11 = a[0][1] * b[1][0] + a[1][1] * b[1][1] + a[2][1] * b[1][2]
-		const r21 = a[0][1] * b[2][0] + a[1][1] * b[2][1] + a[2][1] * b[2][2]
-
-		const r02 = a[0][2] * b[0][0] + a[1][2] * b[0][1] + a[2][2] * b[0][2]
-		const r12 = a[0][2] * b[1][0] + a[1][2] * b[1][1] + a[2][2] * b[1][2]
-		const r22 = a[0][2] * b[2][0] + a[1][2] * b[2][1] + a[2][2] * b[2][2]
-		
-		return new WMatrix3([
-			[r00, r01, r02],
-			[r10, r11, r12],
-			[r20, r21, r22]
-		])
+		return new Matrix3(r)
 	}
 
 	transpose() {
-		const m = this.get()
+		const ret: Tri3<number> = [
+			[0, 0, 0],
+			[0, 0, 0],
+			[0, 0, 0]
+		]
 
-		this.set([
-			[m[0][0], m[1][0], m[2][0]],
-			[m[0][1], m[1][1], m[2][1]],
-			[m[0][2], m[1][2], m[2][2]]
-		])
+		this.get().forEach((v, i) => v.forEach((v, j) => {
+			ret[j][i] = v
+		}))
+
+		return this.set(ret)
+	}
+
+	get buffer() {
+		return this._data.buffer
 	}
 }
 
-export class WTransformMatrix3 {
-	translate: Vector2
-	rotate: number
-	scale: Vector2
-	origin: Vector2
+export class TransformMatrix3 extends Matrix3 {
+	#translate: Vector2
+	#angle: number
+	#direct: Vector2
+	#skew: number
+	#scale: Vector2
 
-	constructor({
-		translate = vec2(0),
-		rotate = 0,
-		scale = vec2(1),
-		origin = vec2(0)
-	}: {
+	constructor(buffer: Float32Array)
+	constructor(options: {
 		translate?: Vector2,
 		rotate?: number,
-		scale?: Vector2,
-		origin?: Vector2
-	}) {
-		this.translate = translate
-		this.rotate = rotate
-		this.scale = scale
-		this.origin = origin
+		skew?: number,
+		scale?: Vector2
+	})
+	constructor(value: {
+		translate?: Vector2,
+		rotate?: number,
+		skew?: number,
+		scale?: Vector2
+	} | Float32Array = {}) {
+		super()
+
+		if (value instanceof Float32Array) {
+			this.setArray(value)
+		} else {
+			this.#translate = value.translate ?? vec2(0)
+			this.#angle = value.rotate ?? 0
+			this.#direct = Vector2.fromDegree(value.rotate ?? 0)
+			this.#skew = Math.tan(value.skew) ?? 0
+			this.#scale = value.scale ?? vec2(1)
+
+			this.calcMatrix()
+		}
 	}
 
-	getMatrix() {
-		const [tx, ty] = this.translate
-		const [rx, ry] = Vector2.fromDegree(this.rotate)
-		const [sx, sy] = this.scale
+	calcMatrix() {
+		const [tx, ty] = this.#translate
+		const [rx, ry] = this.#direct
+		const [sx, sy] = this.#scale
+		const k = this.#skew
 
-		return new WMatrix3([
-			[1, 0, 0],
-			[0, 1, 0],
-			[tx, ty, 1]
-		]).mult(new WMatrix3([
-			[rx, ry, 0],
-			[-ry, rx, 0],
-			[0, 0, 1]
-		])).mult(new WMatrix3([
-			[sx, 0, 0],
-			[0, sy, 0],
-			[0, 0, 1]
-		]))
+		this._data.set([
+			rx * sx, ry * sx, 0,
+			(rx * k - ry) * sy, (ry * k + rx) * sy, 0,
+			tx, ty, 1
+		])
+
+		return this
 	}
 
-	apply(v: Vector2 | WVec2<number>) {
-		let [x, y] = v
-		x -= this.origin.x
-		y -= this.origin.y
+	calcFields() {
+		const [m11, m12, , m21, m22, , m31, m32] = this._data
 
-		const trans = this.getMatrix().get()
-		const dx = trans[0][0] * x + trans[1][0] * y + trans[2][0]
-		const dy = trans[0][1] * x + trans[1][1] * y + trans[2][1]
-		x = dx
-		y = dy
+		this.#direct = vec2(m11, m12).norm
+		this.#angle = this.#direct.rotation
+		
+		const sk = Math.atan2(m22, m21) - Math.PI / 2 - this.#direct.rotation
+		this.#skew = -Math.tan(sk)
 
-		return this.origin.sum(vec2(x, y))
+		this.#scale = vec2(
+			Math.sqrt(m11 ** 2 + m12 ** 2),
+			Math.sqrt(m21 ** 2 + m22 ** 2) * Math.cos(sk)
+		)
+		
+		this.#translate = vec2(m31, m32)
+
+		return this
+	}
+
+	translateX(x: number, recalc = true) {
+		this.#translate.x = x
+
+		if (recalc) this.calcMatrix()
+
+		return this
+	}
+
+	translateY(y: number, recalc = true) {
+		this.#translate.y = y
+
+		if (recalc) this.calcMatrix()
+
+		return this
+	}
+
+	translate(x: number, y: number, recalc = true) {
+		this.#translate = vec2(x, y)
+
+		if (recalc) this.calcMatrix()
+
+		return this
+	}
+
+	rotate(r: number, recalc?: boolean): TransformMatrix3
+	rotate(x: number, y: number, recalc?: boolean): TransformMatrix3
+	rotate(v0: number, v1: number | boolean = true, v2 = true) {
+		if (typeof v1 == 'number') {
+			this.#direct = vec2(v0, v1).norm
+			this.#angle = this.#direct.rotation
+			if (v2) this.calcMatrix()
+		} else {
+			this.#angle = v0
+			this.#direct = Vector2.fromDegree(v0)
+			if (v1) this.calcMatrix()
+		}
+
+		return this
+	}
+
+	scaleX(sx: number, recalc = true) {
+		this.#scale.x = sx
+
+		if (recalc) this.calcMatrix()
+
+		return this
+	}
+
+	scaleY(sy: number, recalc = true) {
+		this.#scale.y = sy
+
+		if (recalc) this.calcMatrix()
+
+		return this
+	}
+
+	scale(sx: number, sy: number, recalc = true) {
+		this.#scale = vec2(sx, sy)
+
+		if (recalc) this.calcMatrix()
+
+		return this
+	}
+
+	skew(k: number, recalc = true) {
+		this.#skew = Math.tan(k)
+
+		if (recalc) this.calcMatrix()
+
+		return this
+	}
+
+	matrix(a = 1, b = 0, c = 0, d = 1, e = 0, f = 0) {
+		this.setArray([
+			a, b, 0,
+			c, d, 0,
+			e, f, 1
+		])
+	}
+
+	copy() {
+		return new TransformMatrix3(this._data)
+	}
+
+	copyFields(value: TransformMatrix3) {
+		this.#translate = value.#translate
+		this.#angle = value.#angle
+		this.#direct = value.#direct
+		this.#skew = value.#skew
+		this.#scale = value.#scale
+
+		this.calcMatrix()
+	}
+
+	setArray(value: ArrayLike<number>, offset?: number) {
+		this._data.set(value, offset)
+		this.calcFields()
+	}
+
+	get tx() {
+		return this.#translate.x
+	}
+
+	get ty() {
+		return this.#translate.y
+	}
+
+	get t() {
+		return this.#translate.sum()
+	}
+
+	get r() {
+		return this.#direct.rotation
+	}
+
+	get rd() {
+		return this.#angle
+	}
+
+	get sx() {
+		return this.#scale.x
+	}
+
+	get sy() {
+		return this.#scale.y
+	}
+
+	get s() {
+		return this.#scale.sum()
+	}
+
+	get k() {
+		return Math.atan(this.#skew)
+	}
+
+	get kt() {
+		return this.#skew
+	}
+
+	get m() {
+		const [a, b, , c, d, , e, f] = this._data
+
+
+		return [a, b, c, d, e, f]
+	}
+	
+	get a() {
+		return this._data[0]
+	}
+	set a(v: number) {
+		this._data[0] = v
+
+		this.calcFields()
+	}
+
+	get b() {
+		return this._data[1]
+	}
+	set b(v: number) {
+		this._data[1] = v
+
+		this.calcFields()
+	}
+
+	get c() {
+		return this._data[3]
+	}
+	set c(v: number) {
+		this._data[3] = v
+
+		this.calcFields()
+	}
+
+	get d() {
+		return this._data[4]
+	}
+	set d(v: number) {
+		this._data[4] = v
+
+		this.calcFields()
+	}
+
+	get e() {
+		return this._data[6]
+	}
+	set e(v: number) {
+		this._data[6] = v
+
+		this.calcFields()
+	}
+
+	get f() {
+		return this._data[7]
+	}
+	set f(v: number) {
+		this._data[7] = v
+
+		this.calcFields()
 	}
 }
 
@@ -385,7 +616,7 @@ export const bezier = (x1: number, y1: number, x2: number, y2: number) => {
 	if (x1 < 0 || x1 > 1) throw new Error('x1 is out of bounds', { cause: x1 })
 	if (x2 < 0 || x2 > 1) throw new Error('x2 is out of bounds', { cause: x2 })
 	
-	const arr: WVec2<number>[] = []
+	const arr: Vec2<number>[] = []
 
 	const pos = (a: number, b: number, t: number) =>
 		t * (3 * a * (1 - t) ** 2 + t * (3 * b * (1 - t) + t))

@@ -1,6 +1,6 @@
 import { narrowColor, narrowDimension } from './math.js';
-import { WPositionedObject } from './objects.js';
-export class WScene {
+import { PositionedObject } from './objects.js';
+export class Scene {
     display;
     gl;
     settings;
@@ -23,6 +23,7 @@ export class WScene {
         };
         this.objects = {};
         this.animations = [];
+        this.init();
     }
     init() {
         this.gl.clearColor(...this.settings.backgroundColor);
@@ -31,9 +32,6 @@ export class WScene {
         this.gl.blendFunc(...this.settings.blendFunc);
         this.gl.blendFunc(...this.settings.blendFunc);
         this.resize();
-        for (const name in this.objects) {
-            this.objects[name].init();
-        }
     }
     draw() {
         this.gl.clear(WebGL2RenderingContext.COLOR_BUFFER_BIT |
@@ -48,15 +46,8 @@ export class WScene {
     updateLocations(dt) {
         for (const name in this.objects) {
             const obj = this.objects[name];
-            if (obj instanceof WPositionedObject)
+            if (obj instanceof PositionedObject)
                 obj.physics.updateLocation(dt);
-        }
-    }
-    updateGlobals() {
-        for (const name in this.objects) {
-            const obj = this.objects[name];
-            if (obj instanceof WPositionedObject)
-                obj.physics.updateGlobalLocation();
         }
     }
     addObject(arg1, arg2) {
@@ -111,7 +102,6 @@ const texParamMap = {
     TEXTURE_MAX_LOD: 'texF',
     TEXTURE_MIN_LOD: 'texF'
 };
-// '2' | '2x3' | '2x4' | '3x2' | '3' | '3x4' | '4x2' | '4x3' | '4'
 const matrixDim = {
     '2': 4,
     '2x3': 6,
@@ -123,7 +113,7 @@ const matrixDim = {
     '4x3': 12,
     '4': 16
 };
-export class WRenderer {
+export class Renderer {
     #data;
     scene;
     program;
@@ -147,9 +137,13 @@ export class WRenderer {
         });
         gl.linkProgram(this.program);
     }
-    init({ uniforms = {}, attributes = {}, textures = [] }) {
+    init({ uniforms = {}, attributes = {}, textures = [] } = {}) {
         for (const name in uniforms) {
-            this.setUniform(name, uniforms[name]);
+            const val = uniforms[name];
+            if ('dim' in val)
+                this.setUniform(name, val.data, val.dim);
+            else
+                this.setUniform(name, val);
         }
         for (const name in attributes) {
             const attr = attributes[name];

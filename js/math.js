@@ -59,7 +59,7 @@ export class Vector2 {
         return ret;
     }
     /**
-     * Calculates the difference between gien vector and this.
+     * Calculates the difference between given vector and this.
      */
     dif(v) {
         return vec2(this.x - v.x, this.y - v.y);
@@ -136,7 +136,7 @@ export class Vector2 {
      *
      * _|A|_
      */
-    get length() {
+    get size() {
         return Math.hypot(this.x, this.y);
     }
     /**
@@ -149,13 +149,19 @@ export class Vector2 {
      * Returns this vector but with length equal to 1.
      */
     get norm() {
-        return this.scale(1 / this.length);
+        return this.scale(1 / this.size);
     }
     /**
      * Return this vector's rotation.
      */
     get rotation() {
         return Math.atan2(this.y, this.x);
+    }
+    get arr() {
+        return [this.x, this.y];
+    }
+    get length() {
+        return 2;
     }
     get [Symbol.iterator]() {
         const me = this;
@@ -170,100 +176,115 @@ export class Vector2 {
         return vec2(length * Math.cos(degree), length * Math.sin(degree));
     }
 }
-export class WMatrix3 {
+export class Matrix3 {
     _data;
     constructor(data) {
-        this._data = data ?? [
-            [1, 0, 0],
-            [0, 1, 0],
-            [0, 0, 1]
-        ];
+        this._data = Float32Array.from(data?.flat() ?? [
+            1, 0, 0,
+            0, 1, 0,
+            0, 0, 1
+        ]);
     }
     get(col, row) {
         if (typeof row == 'number') {
-            return this._data[col][row];
+            return this._data[col * 3 + row];
         }
         else if (typeof col == 'number') {
-            return [...this._data[col]];
+            const colI = col * 3;
+            return [...this._data.subarray(colI, colI + 3)];
         }
         else {
-            const [a, b, c] = this._data;
-            return [[...a], [...b], [...c]];
+            return [
+                [...this._data.subarray(0, 3)],
+                [...this._data.subarray(3, 6)],
+                [...this._data.subarray(6, 9)]
+            ];
         }
     }
     set(col, row, value) {
         if (typeof value == 'number') {
-            this._data[col][row] = value;
+            this._data[+col * 3 + +row] = value;
         }
         else if (Array.isArray(row)) {
-            this._data[col] = row;
+            this._data.set(row, +col * 3);
         }
         else if (Array.isArray(col)) {
-            this._data = col;
+            this._data.set(col.flat());
         }
         else
             throw new Error('Invalid data');
+        return this;
     }
     copy() {
-        return new WMatrix3(this.get());
+        return new Matrix3(this.get());
     }
     sum(...mat) {
-        const ret = [];
-        this._data.forEach((_, col) => {
-            ret.push([]);
-            this._data[col].forEach((v1, row) => {
-                ret[col].push(mat.reduce((t, v) => t + v[col][row], v1));
+        const ret = [...this._data];
+        mat.forEach(m => {
+            m._data.forEach((v, i) => {
+                ret[i] += v;
             });
         });
-        return new WMatrix3(ret);
+        return new Matrix3(ret);
     }
     mult(mat) {
         const a = this.get();
         const b = mat.get();
-        // TODO: Turn to loop calc
-        const r00 = a[0][0] * b[0][0] + a[1][0] * b[0][1] + a[2][0] * b[0][2];
-        const r10 = a[0][0] * b[1][0] + a[1][0] * b[1][1] + a[2][0] * b[1][2];
-        const r20 = a[0][0] * b[2][0] + a[1][0] * b[2][1] + a[2][0] * b[2][2];
-        const r01 = a[0][1] * b[0][0] + a[1][1] * b[0][1] + a[2][1] * b[0][2];
-        const r11 = a[0][1] * b[1][0] + a[1][1] * b[1][1] + a[2][1] * b[1][2];
-        const r21 = a[0][1] * b[2][0] + a[1][1] * b[2][1] + a[2][1] * b[2][2];
-        const r02 = a[0][2] * b[0][0] + a[1][2] * b[0][1] + a[2][2] * b[0][2];
-        const r12 = a[0][2] * b[1][0] + a[1][2] * b[1][1] + a[2][2] * b[1][2];
-        const r22 = a[0][2] * b[2][0] + a[1][2] * b[2][1] + a[2][2] * b[2][2];
-        return new WMatrix3([
-            [r00, r01, r02],
-            [r10, r11, r12],
-            [r20, r21, r22]
-        ]);
+        const r = [
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0]
+        ];
+        for (let i = 0; i < 3; i++) {
+            for (let j = 0; j < 3; j++) {
+                r[j][i] = a[0][i] * b[j][0] +
+                    a[1][i] * b[j][1] +
+                    a[2][i] * b[j][2];
+            }
+        }
+        return new Matrix3(r);
     }
     transpose() {
-        const m = this.get();
-        this.set([
-            [m[0][0], m[1][0], m[2][0]],
-            [m[0][1], m[1][1], m[2][1]],
-            [m[0][2], m[1][2], m[2][2]]
-        ]);
+        const ret = [
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0]
+        ];
+        this.get().forEach((v, i) => v.forEach((v, j) => {
+            ret[j][i] = v;
+        }));
+        return this.set(ret);
+    }
+    get buffer() {
+        return this._data.buffer;
     }
 }
-export class WTransformMatrix3 {
+export class TransformMatrix3 extends Matrix3 {
     #translate;
+    #angle;
     #direct;
     #skew;
     #scale;
-    #data = new Float32Array(9);
-    constructor({ translate = vec2(0), rotate = 0, skew = 0, scale = vec2(1) } = {}) {
-        this.#translate = translate;
-        this.#direct = Vector2.fromDegree(rotate);
-        this.#skew = Math.tan(skew);
-        this.#scale = scale;
-        this.calcMatrix();
+    constructor(value = {}) {
+        super();
+        if (value instanceof Float32Array) {
+            this.setArray(value);
+        }
+        else {
+            this.#translate = value.translate ?? vec2(0);
+            this.#angle = value.rotate ?? 0;
+            this.#direct = Vector2.fromDegree(value.rotate ?? 0);
+            this.#skew = Math.tan(value.skew) ?? 0;
+            this.#scale = value.scale ?? vec2(1);
+            this.calcMatrix();
+        }
     }
     calcMatrix() {
         const [tx, ty] = this.#translate;
         const [rx, ry] = this.#direct;
         const [sx, sy] = this.#scale;
         const k = this.#skew;
-        this.#data.set([
+        this._data.set([
             rx * sx, ry * sx, 0,
             (rx * k - ry) * sy, (ry * k + rx) * sy, 0,
             tx, ty, 1
@@ -271,57 +292,93 @@ export class WTransformMatrix3 {
         return this;
     }
     calcFields() {
-        const [m11, m12, , m21, m22, , m31, m32] = this.#data;
+        const [m11, m12, , m21, m22, , m31, m32] = this._data;
         this.#direct = vec2(m11, m12).norm;
+        this.#angle = this.#direct.rotation;
         const sk = Math.atan2(m22, m21) - Math.PI / 2 - this.#direct.rotation;
         this.#skew = -Math.tan(sk);
-        this.#scale.x = Math.sqrt(m11 ** 2 + m12 ** 2);
-        this.#scale.y = Math.sqrt(m21 ** 2 + m22 ** 2) * Math.cos(sk);
+        this.#scale = vec2(Math.sqrt(m11 ** 2 + m12 ** 2), Math.sqrt(m21 ** 2 + m22 ** 2) * Math.cos(sk));
         this.#translate = vec2(m31, m32);
         return this;
     }
-    translateX(x) {
+    translateX(x, recalc = true) {
         this.#translate.x = x;
-        return this.calcMatrix();
+        if (recalc)
+            this.calcMatrix();
+        return this;
     }
-    translateY(y) {
+    translateY(y, recalc = true) {
         this.#translate.y = y;
-        return this.calcMatrix();
+        if (recalc)
+            this.calcMatrix();
+        return this;
     }
-    translate(x, y) {
+    translate(x, y, recalc = true) {
         this.#translate = vec2(x, y);
-        return this.calcMatrix();
+        if (recalc)
+            this.calcMatrix();
+        return this;
     }
-    rotate(v0, v1) {
-        if (v1 !== undefined)
+    rotate(v0, v1 = true, v2 = true) {
+        if (typeof v1 == 'number') {
             this.#direct = vec2(v0, v1).norm;
-        else
+            this.#angle = this.#direct.rotation;
+            if (v2)
+                this.calcMatrix();
+        }
+        else {
+            this.#angle = v0;
             this.#direct = Vector2.fromDegree(v0);
-        return this.calcMatrix();
+            if (v1)
+                this.calcMatrix();
+        }
+        return this;
     }
-    scaleX(sx) {
+    scaleX(sx, recalc = true) {
         this.#scale.x = sx;
-        return this.calcMatrix();
+        if (recalc)
+            this.calcMatrix();
+        return this;
     }
-    scaleY(sy) {
+    scaleY(sy, recalc = true) {
         this.#scale.y = sy;
-        return this.calcMatrix();
+        if (recalc)
+            this.calcMatrix();
+        return this;
     }
-    scale(sx, sy) {
+    scale(sx, sy, recalc = true) {
         this.#scale = vec2(sx, sy);
-        return this.calcMatrix();
+        if (recalc)
+            this.calcMatrix();
+        return this;
     }
-    skew(k) {
+    skew(k, recalc = true) {
         this.#skew = Math.tan(k);
-        return this.calcMatrix();
+        if (recalc)
+            this.calcMatrix();
+        return this;
     }
     matrix(a = 1, b = 0, c = 0, d = 1, e = 0, f = 0) {
-        this.#data.set([
+        this.setArray([
             a, b, 0,
             c, d, 0,
             e, f, 1
         ]);
-        return this.calcFields();
+    }
+    copy() {
+        return new TransformMatrix3(this._data);
+    }
+    copyFields(value) {
+        this.#translate = value.#translate;
+        this.#angle = value.#angle;
+        this.#direct = value.#direct;
+        this.#skew = value.#skew;
+        this.#scale = value.#scale;
+        this.calcMatrix();
+    }
+    setArray(value, offset) {
+        this._data.set(value, offset);
+        this.calcFields();
     }
     get tx() {
         return this.#translate.x;
@@ -334,6 +391,9 @@ export class WTransformMatrix3 {
     }
     get r() {
         return this.#direct.rotation;
+    }
+    get rd() {
+        return this.#angle;
     }
     get sx() {
         return this.#scale.x;
@@ -351,53 +411,50 @@ export class WTransformMatrix3 {
         return this.#skew;
     }
     get m() {
-        const [a, b, , c, d, , e, f] = this.#data;
+        const [a, b, , c, d, , e, f] = this._data;
         return [a, b, c, d, e, f];
     }
     get a() {
-        return this.#data[0];
+        return this._data[0];
     }
     set a(v) {
-        this.#data[0] = v;
+        this._data[0] = v;
         this.calcFields();
     }
     get b() {
-        return this.#data[1];
+        return this._data[1];
     }
     set b(v) {
-        this.#data[1] = v;
+        this._data[1] = v;
         this.calcFields();
     }
     get c() {
-        return this.#data[3];
+        return this._data[3];
     }
     set c(v) {
-        this.#data[3] = v;
+        this._data[3] = v;
         this.calcFields();
     }
     get d() {
-        return this.#data[4];
+        return this._data[4];
     }
     set d(v) {
-        this.#data[4] = v;
+        this._data[4] = v;
         this.calcFields();
     }
     get e() {
-        return this.#data[6];
+        return this._data[6];
     }
     set e(v) {
-        this.#data[6] = v;
+        this._data[6] = v;
         this.calcFields();
     }
     get f() {
-        return this.#data[7];
+        return this._data[7];
     }
     set f(v) {
-        this.#data[7] = v;
+        this._data[7] = v;
         this.calcFields();
-    }
-    get buffer() {
-        return this.#data.buffer;
     }
 }
 export const bezier = (x1, y1, x2, y2) => {

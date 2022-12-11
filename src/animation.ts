@@ -1,5 +1,4 @@
 import { clamp } from './math.js'
-import { BasicObject } from './objects.js'
 
 export interface Timed {
 	t0: number

@@ -1,12 +1,12 @@
-import { WScene } from './graphics.js'
-import { WOneColorObject, WPositionedObject } from './objects.js'
-import { CopyLocationConstraint, CopyRotationConstraint } from './physics.js';
-import { RegularPolygon } from './shapes.js';
+import { Scene } from './graphics.js'
+import { OneColorObject, PositionedObject } from './objects.js'
+import { LimitDistanceConstraint, LimitLocationConstraint } from './physics.js'
+import { RegularPolygon } from './shapes.js'
 
 window.addEventListener('load', async () => {
 	const display = <HTMLCanvasElement>document.getElementById('display')
 
-	const scene = globalThis.scene = new WScene({
+	const scene = globalThis.scene = new Scene({
 		canvas: display,
 		settings: {
 			backgroundColor: '#150E1C',
@@ -18,7 +18,7 @@ window.addEventListener('load', async () => {
 			],
 			viewport: { x: 0, y: 0, width: 1, height: 1 }
 		}
-	});
+	})
 
 	const resize = () => {
 		const rect = display.getBoundingClientRect();
@@ -29,7 +29,7 @@ window.addEventListener('load', async () => {
 
 		for (const name in scene.objects) {
 			const obj = scene.objects[name]
-			if (obj instanceof WPositionedObject) {
+			if (obj instanceof PositionedObject) {
 				obj.ratio = ratio
 			}
 		}
@@ -38,87 +38,72 @@ window.addEventListener('load', async () => {
 	}
 
 	const hex = new RegularPolygon({
-		radius: .25,
+		radius: 1,
 		vertexCount: 6
 	})
 
 	const pent = new RegularPolygon({
-		radius: .50,
+		radius: 1,
 		vertexCount: 5
 	})
-	scene.addObject('hex', new WOneColorObject(scene, '#03fcc6', <never>[[
-		[...hex.vertices[0]],
-		[...hex.vertices[1]],
-		[...hex.vertices[5]]
+
+	scene.addObject('hex', new OneColorObject(scene, '#03fcc6', [[
+		hex.vertices[0].arr,
+		hex.vertices[1].arr,
+		hex.vertices[5].arr
 	], [
-		[...hex.vertices[5]],
-		[...hex.vertices[1]],
-		[...hex.vertices[4]]
+		hex.vertices[5].arr,
+		hex.vertices[1].arr,
+		hex.vertices[4].arr
 	], [
-		[...hex.vertices[1]],
-		[...hex.vertices[2]],
-		[...hex.vertices[4]]
+		hex.vertices[1].arr,
+		hex.vertices[2].arr,
+		hex.vertices[4].arr
 	], [
-		[...hex.vertices[4]],
-		[...hex.vertices[2]],
-		[...hex.vertices[3]]
+		hex.vertices[4].arr,
+		hex.vertices[2].arr,
+		hex.vertices[3].arr
 	]], 0))
 
-	scene.addObject('pent', new WOneColorObject(scene, '#5ab03f', <never>[[
-		[...pent.vertices[0]],
-		[...pent.vertices[2]],
-		[...pent.vertices[1]]
+	scene.addObject('pent', new OneColorObject(scene, '#5ab03f', [[
+		pent.vertices[0].arr,
+		pent.vertices[2].arr,
+		pent.vertices[1].arr
 	], [
-		[...pent.vertices[0]],
-		[...pent.vertices[3]],
-		[...pent.vertices[2]]
+		pent.vertices[0].arr,
+		pent.vertices[3].arr,
+		pent.vertices[2].arr
 	], [
-		[...pent.vertices[0]],
-		[...pent.vertices[4]],
-		[...pent.vertices[3]]
+		pent.vertices[0].arr,
+		pent.vertices[4].arr,
+		pent.vertices[3].arr
 	]], 1))
 
-	const copLoc = globalThis.copLoc = new CopyLocationConstraint(
-		(<WPositionedObject>scene.objects.pent).physics,
-		(<WPositionedObject>scene.objects.hex).physics,
-		{
-			axes: [true, true],
-			invert: [false, false],
-			offset: false,
-			ownerRelativity: 'global',
-			targetRelativity: 'global'
-		}
-	)
+	;(<OneColorObject>scene.objects['pent']).physics.local.scale(.5, .5)
+	;(<OneColorObject>scene.objects['hex']).physics.local.scale(.25, .25)
 
-	const copRot = globalThis.copRot = new CopyRotationConstraint(
-		(<WPositionedObject>scene.objects.pent).physics,
-		(<WPositionedObject>scene.objects.hex).physics,
-		{
-			invert: false,
-			offset: false,
-			ownerRelativity: 'global',
-			targetRelativity: 'global'
+	const limitLoc = globalThis.limitLoc = new LimitLocationConstraint(
+		(<PositionedObject>scene.objects.pent).physics, {
+			minX: -.5,
+			minY: -.5,
+			maxX: .5,
+			maxY: .5
 		}
 	)
 
 	window.addEventListener('resize', resize)
 	resize()
 
-	scene.init()
-
 	let lastTime = -1
 
 	const draw = globalThis.draw = (time: number) => {
 		if (lastTime < 0) lastTime = time
-		const dt = (time - lastTime) / 1000;
-		lastTime = time;
+		const dt = (time - lastTime) / 1000
+		lastTime = time
 
 		scene.updateLocations(dt)
 
-		copLoc.solve()
-		copRot.solve()
-
-		scene.updateGlobals()
+		limitLoc.solve()
 
 		scene.draw()
 

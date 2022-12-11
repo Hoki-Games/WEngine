@@ -2,44 +2,49 @@ import { Timed } from './animation.js'
 import {
 	narrowColor,
 	narrowDimension,
-	WColor,
-	WDimension,
-	WVec4
+	Color,
+	Dimension,
+	Vec4
 } from './math.js'
-import { BasicObject, WPositionedObject } from './objects.js'
+import { BasicObject, PositionedObject } from './objects.js'
 
-export type WUniformType = Int32Array | Uint32Array | Float32Array
+export type UniformType = Int32Array | Uint32Array | Float32Array
 
-export type WMatrixDim = keyof typeof matrixDim
-interface WUniform {
-	location: WebGLUniformLocation
-	data: WUniformType
-	type: 'i' | 'ui' | 'f' | WMatrixDim
+export type MatrixData = {
+	data: Float32Array,
+	dim: MatrixDim
 }
 
-type WAttributeType = 'BYTE' | 'SHORT' | 'UNSIGNED_BYTE'
+export type MatrixDim = keyof typeof matrixDim
+interface Uniform {
+	location: WebGLUniformLocation
+	data: UniformType
+	type: 'i' | 'ui' | 'f' | MatrixDim
+}
+
+type AttributeType = 'BYTE' | 'SHORT' | 'UNSIGNED_BYTE'
 	| 'UNSIGNED_SHORT' | 'FLOAT' | 'HALF_FLOAT' | 'INT'
-export interface WAttributeData {
+export interface AttributeData {
 	data: ArrayBuffer
-	type: WAttributeType
+	type: AttributeType
 	length: GLint
 }
 
-interface WAttribute extends WAttributeData {
+interface Attribute extends AttributeData {
 	location: GLuint
 }
 
-type WTexture = {
+type Texture = {
 	data: TexImageSource
 	location: WebGLTexture
 	target: GLenum
 }
 
-type WTexParams = {
+type TexParams = {
 	[P in keyof typeof texParamMap]?: number | boolean
 }
 
-export type WTexSettings = {
+export type TexSettings = {
 	target?: GLenum
 	level?: GLint
 	internalformat?: GLint
@@ -48,42 +53,42 @@ export type WTexSettings = {
 	border?: GLint
 	format?: GLenum
 	type?: GLenum
-	params?: WTexParams
+	params?: TexParams
 }
 
-type WGLData = {
+type GLData = {
 	uniforms: {
-		[key: string]: WUniform
+		[key: string]: Uniform
 	}
 	buffers: {
 		[key: string]: WebGLBuffer
 	}
 	attributes: {
-		[key: string]: WAttribute
+		[key: string]: Attribute
 	}
-	textures: WTexture[]
+	textures: Texture[]
 }
 
-export type WShader = {
+export type Shader = {
 	source: string
 	type: 'VERTEX_SHADER' | 'FRAGMENT_SHADER'
 }
 
-type WSettings = {
-	backgroundColor: WColor
+type Settings = {
+	backgroundColor: Color
 	premultipliedAlpha?: boolean
-	viewport: WDimension
+	viewport: Dimension
 	enable?: GLenum[]
 	depthFunc?: GLenum
 	blendFunc?: [GLenum, GLenum]
 }
 
-export class WScene {
+export class Scene {
 	display: HTMLCanvasElement
 	gl: WebGL2RenderingContext
 	settings: {
-		backgroundColor: WVec4<GLclampf>
-		viewport: WVec4<GLint, GLint, GLsizei, GLsizei>
+		backgroundColor: Vec4<GLclampf>
+		viewport: Vec4<GLint, GLint, GLsizei, GLsizei>
 		enable: GLenum[]
 		depthFunc: GLenum
 		blendFunc: [GLenum, GLenum]
@@ -96,7 +101,7 @@ export class WScene {
 		settings
 	}: {
 		canvas: HTMLCanvasElement
-		settings: WSettings
+		settings: Settings
 	}) {
 		this.display = canvas;
 		this.gl = canvas.getContext('webgl2', {
@@ -114,6 +119,8 @@ export class WScene {
 		}
 		this.objects = {}
 		this.animations = []
+
+		this.init()
 	}
 
 	init() {
@@ -127,10 +134,6 @@ export class WScene {
 		this.gl.blendFunc(...this.settings.blendFunc)
 
 		this.resize()
-
-		for (const name in this.objects) {
-			this.objects[name].init()
-		}
 	}
 
 	draw() {
@@ -151,16 +154,8 @@ export class WScene {
 	updateLocations(dt: number) {
 		for (const name in this.objects) {
 			const obj = this.objects[name]
-			if (obj instanceof WPositionedObject)
+			if (obj instanceof PositionedObject)
 				obj.physics.updateLocation(dt)
-		}
-	}
-
-	updateGlobals() {
-		for (const name in this.objects) {
-			const obj = this.objects[name]
-			if (obj instanceof WPositionedObject)
-				obj.physics.updateGlobalLocation()
 		}
 	}
 
@@ -228,7 +223,6 @@ const texParamMap = {
 	TEXTURE_MIN_LOD: 'texF'
 } as const
 
-// '2' | '2x3' | '2x4' | '3x2' | '3' | '3x4' | '4x2' | '4x3' | '4'
 const matrixDim = {
 	'2': 4,
 	'2x3': 6,
@@ -241,10 +235,10 @@ const matrixDim = {
 	'4': 16
 } as const
 
-export class WRenderer {
-	#data: WGLData
+export class Renderer {
+	#data: GLData
 
-	scene: WScene
+	scene: Scene
 	program: WebGLProgram
 	shaders: WebGLShader[]
 
@@ -252,8 +246,8 @@ export class WRenderer {
 		scene,
 		shaders = []
 	}: {
-		scene: WScene
-		shaders?: WShader[]
+		scene: Scene
+		shaders?: Shader[]
 	}) {
 		this.scene = scene
 
@@ -288,15 +282,18 @@ export class WRenderer {
 		attributes = {},
 		textures = []
 	}: {
-		uniforms?: Record<string, WUniformType>
-		attributes?: Record<string, WAttributeData>
+		uniforms?: Record<string, UniformType | MatrixData>
+		attributes?: Record<string, AttributeData>
 		textures?: {
 			img: TexImageSource
-			settings?: WTexSettings
+			settings?: TexSettings
 		}[]
-	}) {
+	} = {}) {
 		for (const name in uniforms) {
-			this.setUniform(name, uniforms[name]);
+			const val = uniforms[name]
+
+			if ('dim' in val) this.setUniform(name, val.data, val.dim)
+			else this.setUniform(name, val)
 		}
 
 		for (const name in attributes) {
@@ -331,7 +328,7 @@ export class WRenderer {
 			const type = uni.type
 	
 			if (type in matrixDim) {
-				const func = <const>`uniformMatrix${<WMatrixDim>type}fv`
+				const func = <const>`uniformMatrix${<MatrixDim>type}fv`
 
 				this.scene.gl[func](
 					uni.location,
@@ -389,7 +386,7 @@ export class WRenderer {
 	setAttribute(
 		name: string,
 		value: ArrayBuffer,
-		type: WAttributeType,
+		type: AttributeType,
 		length: GLint
 	) {
 		if (!(name in this.#data.attributes)) {
@@ -423,14 +420,14 @@ export class WRenderer {
 	getUniform(name: string) {
 		return this.#data.uniforms[name].data;
 	}
-	setUniform(name: string, value: WUniformType): void
-	setUniform(name: string, value: Float32Array, matrix: WMatrixDim): void
+	setUniform(name: string, value: UniformType): void
+	setUniform(name: string, matrix: Float32Array, dim: MatrixDim): void
 	setUniform(
 		name: string,
-		value: WUniformType,
-		matrix?: WMatrixDim
+		value: UniformType,
+		matrix?: MatrixDim
 	) {
-		let type: WUniform['type']
+		let type: Uniform['type']
 		if (!matrix) {
 			type = (() => {switch (value.constructor) {
 			case Int32Array: return 'i'
@@ -474,7 +471,7 @@ export class WRenderer {
 	}: {
 		id: number
 		img: TexImageSource
-		settings?: WTexSettings
+		settings?: TexSettings
 	}) {
 		const target = settings.target ?? WebGL2RenderingContext.TEXTURE_2D;
 		const level = settings.target ?? 0;

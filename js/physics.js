@@ -1,5 +1,5 @@
-import { vec2, WTransformMatrix3, clamp } from './math.js';
-export class WPhysicsModel {
+import { vec2, TransformMatrix3, clamp } from './math.js';
+export class PhysicsModel {
     #origin;
     #local;
     #global;
@@ -13,7 +13,7 @@ export class WPhysicsModel {
         this.velocity = velocity;
         this.acceleration = acceleration;
         this.force = vec2(0);
-        this.#local = new WTransformMatrix3({
+        this.#local = new TransformMatrix3({
             translate: location,
             rotate: rotation,
             scale,
@@ -41,7 +41,8 @@ export class WPhysicsModel {
         this.move(this.velocity.scale(dt));
         this.acceleration = vec2(0);
         this.force = vec2(0);
-        this.#global.setArray(new Float32Array(this.#local.buffer));
+        // this.#global.setArray(new Float32Array(this.#local.buffer))
+        this.#global.copyFields(this.#local);
     }
     get origin() {
         return this.#origin;
@@ -67,7 +68,7 @@ class TargetConstraint extends ObjectConstraint {
         this.target = target;
     }
 }
-export class WSpring extends TargetConstraint {
+export class Spring extends TargetConstraint {
     L0;
     ks;
     constructor(owner, target, { L0, ks }) {
@@ -86,7 +87,7 @@ export class WSpring extends TargetConstraint {
         this.target.applyForce(F_ba);
     }
 }
-export class WRope extends TargetConstraint {
+export class Rope extends TargetConstraint {
     length;
     bounce;
     constructor(owner, target, { length, bounce }) {
@@ -327,7 +328,62 @@ export class LimitLocationConstraint extends ObjectConstraint {
         this.#influence = clamp(v, 0, 1);
     }
 }
-export class LimitScaleConstraint extends TargetConstraint {
+export class LimitScaleConstraint extends ObjectConstraint {
+    #influence;
+    minX;
+    minY;
+    maxX;
+    maxY;
+    ownerRelativity;
+    constructor(owner, { ownerRelativity = 'global', influence = 1, minX = -Infinity, minY = -Infinity, maxX = Infinity, maxY = Infinity } = {}) {
+        super(owner);
+        this.ownerRelativity = ownerRelativity;
+        this.#influence = influence;
+        this.minX = minX;
+        this.minY = minY;
+        this.maxX = maxX;
+        this.maxY = maxY;
+    }
+    solve() {
+        const og = this.owner.global;
+        const o = this.ownerRelativity == 'local'
+            ? this.owner.local
+            : og;
+        const dsx = clamp(o.sx, this.minX, this.maxX) - o.sx;
+        const dsy = clamp(o.sy, this.minY, this.maxY) - o.sy;
+        og.scale(o.sx + dsx * this.#influence, o.sy + dsy * this.#influence);
+    }
+    get influence() {
+        return this.#influence;
+    }
+    set influence(v) {
+        this.#influence = clamp(v, 0, 1);
+    }
 }
-export class LimitRotationConstraint extends TargetConstraint {
+export class LimitRotationConstraint extends ObjectConstraint {
+    #influence;
+    min;
+    max;
+    ownerRelativity;
+    constructor(owner, { ownerRelativity = 'global', influence = 1, min = -Infinity, max = Infinity, } = {}) {
+        super(owner);
+        this.ownerRelativity = ownerRelativity;
+        this.#influence = influence;
+        this.min = min;
+        this.max = max;
+    }
+    solve() {
+        const og = this.owner.global;
+        const o = this.ownerRelativity == 'local'
+            ? this.owner.local
+            : og;
+        const dr = clamp(o.rd, this.min, this.max) - o.rd;
+        og.rotate(o.rd + dr * this.#influence);
+    }
+    get influence() {
+        return this.#influence;
+    }
+    set influence(v) {
+        this.#influence = clamp(v, 0, 1);
+    }
 }

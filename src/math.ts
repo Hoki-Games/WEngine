@@ -344,6 +344,7 @@ export class Matrix3 {
 
 export class TransformMatrix3 extends Matrix3 {
 	#translate: Vector2
+	#angle: number
 	#direct: Vector2
 	#skew: number
 	#scale: Vector2
@@ -367,6 +368,7 @@ export class TransformMatrix3 extends Matrix3 {
 			this.setArray(value)
 		} else {
 			this.#translate = value.translate ?? vec2(0)
+			this.#angle = value.rotate ?? 0
 			this.#direct = Vector2.fromDegree(value.rotate ?? 0)
 			this.#skew = Math.tan(value.skew) ?? 0
 			this.#scale = value.scale ?? vec2(1)
@@ -394,6 +396,7 @@ export class TransformMatrix3 extends Matrix3 {
 		const [m11, m12, , m21, m22, , m31, m32] = this._data
 
 		this.#direct = vec2(m11, m12).norm
+		this.#angle = this.#direct.rotation
 		
 		const sk = Math.atan2(m22, m21) - Math.PI / 2 - this.#direct.rotation
 		this.#skew = -Math.tan(sk)
@@ -437,8 +440,10 @@ export class TransformMatrix3 extends Matrix3 {
 	rotate(v0: number, v1: number | boolean = true, v2 = true) {
 		if (typeof v1 == 'number') {
 			this.#direct = vec2(v0, v1).norm
+			this.#angle = this.#direct.rotation
 			if (v2) this.calcMatrix()
 		} else {
+			this.#angle = v0
 			this.#direct = Vector2.fromDegree(v0)
 			if (v1) this.calcMatrix()
 		}
@@ -490,6 +495,16 @@ export class TransformMatrix3 extends Matrix3 {
 		return new TransformMatrix3(this._data)
 	}
 
+	copyFields(value: TransformMatrix3) {
+		this.#translate = value.#translate
+		this.#angle = value.#angle
+		this.#direct = value.#direct
+		this.#skew = value.#skew
+		this.#scale = value.#scale
+
+		this.calcMatrix()
+	}
+
 	setArray(value: ArrayLike<number>, offset?: number) {
 		this._data.set(value, offset)
 		this.calcFields()
@@ -509,6 +524,10 @@ export class TransformMatrix3 extends Matrix3 {
 
 	get r() {
 		return this.#direct.rotation
+	}
+
+	get rd() {
+		return this.#angle
 	}
 
 	get sx() {

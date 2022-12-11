@@ -1,6 +1,6 @@
 import { narrowColor, narrowDimension } from './math.js';
-import { WPositionedObject } from './objects.js';
-export class WScene {
+import { PositionedObject } from './objects.js';
+export class Scene {
     display;
     gl;
     settings;
@@ -46,7 +46,7 @@ export class WScene {
     updateLocations(dt) {
         for (const name in this.objects) {
             const obj = this.objects[name];
-            if (obj instanceof WPositionedObject)
+            if (obj instanceof PositionedObject)
                 obj.physics.updateLocation(dt);
         }
     }
@@ -113,7 +113,7 @@ const matrixDim = {
     '4x3': 12,
     '4': 16
 };
-export class WRenderer {
+export class Renderer {
     #data;
     scene;
     program;

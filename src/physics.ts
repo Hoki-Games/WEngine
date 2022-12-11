@@ -74,7 +74,8 @@ export class PhysicsModel {
 		this.acceleration = vec2(0)
 		this.force = vec2(0)
 
-		this.#global.setArray(new Float32Array(this.#local.buffer))
+		// this.#global.setArray(new Float32Array(this.#local.buffer))
+		this.#global.copyFields(this.#local)
 	}
 
 	get origin() {
@@ -521,10 +522,106 @@ export class LimitLocationConstraint extends ObjectConstraint {
 	}
 }
 
-export class LimitScaleConstraint extends TargetConstraint {
+export class LimitScaleConstraint extends ObjectConstraint {
+	#influence: number
 
+	minX: number
+	minY: number
+	maxX: number
+	maxY: number
+
+	ownerRelativity: 'local' | 'global'
+
+	constructor(owner: PhysicsModel, {
+		ownerRelativity = 'global',
+		influence = 1,
+		minX = -Infinity,
+		minY = -Infinity,
+		maxX = Infinity,
+		maxY = Infinity
+	}: {
+		ownerRelativity?: 'local' | 'global'
+		influence?: number
+		minX?: number
+		minY?: number
+		maxX?: number
+		maxY?: number
+	} = {}) {
+		super(owner)
+
+		this.ownerRelativity = ownerRelativity
+		this.#influence = influence
+		this.minX = minX
+		this.minY = minY
+		this.maxX = maxX
+		this.maxY = maxY
+	}
+
+	solve() {
+		const og = this.owner.global
+		const o = this.ownerRelativity == 'local'
+			? this.owner.local
+			: og
+
+		const dsx = clamp(o.sx, this.minX, this.maxX) - o.sx
+		const dsy = clamp(o.sy, this.minY, this.maxY) - o.sy
+
+		og.scale(
+			o.sx + dsx * this.#influence,
+			o.sy + dsy * this.#influence
+		)
+	}
+
+	get influence() {
+		return this.#influence
+	}
+	set influence(v: number) {
+		this.#influence = clamp(v, 0, 1)
+	}
 }
 
-export class LimitRotationConstraint extends TargetConstraint {
+export class LimitRotationConstraint extends ObjectConstraint {
+	#influence: number
 
+	min: number
+	max: number
+
+	ownerRelativity: 'local' | 'global'
+
+	constructor(owner: PhysicsModel, {
+		ownerRelativity = 'global',
+		influence = 1,
+		min = -Infinity,
+		max = Infinity,
+	}: {
+		ownerRelativity?: 'local' | 'global'
+		influence?: number
+		min?: number
+		max?: number
+	} = {}) {
+		super(owner)
+
+		this.ownerRelativity = ownerRelativity
+		this.#influence = influence
+		this.min = min
+		this.max = max
+	}
+
+	solve() {
+		const og = this.owner.global
+		const o = this.ownerRelativity == 'local'
+			? this.owner.local
+			: og
+
+		const dr = clamp(o.rd, this.min, this.max) - o.rd
+
+		og.rotate(o.rd + dr * this.#influence)
+	}
+
+	get influence() {
+		return this.#influence
+	}
+	set influence(v: number) {
+		this.#influence = clamp(v, 0, 1)
+	}
 }

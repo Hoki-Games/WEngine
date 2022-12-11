@@ -176,7 +176,7 @@ export class Vector2 {
         return vec2(length * Math.cos(degree), length * Math.sin(degree));
     }
 }
-export class WMatrix3 {
+export class Matrix3 {
     _data;
     constructor(data) {
         this._data = Float32Array.from(data?.flat() ?? [
@@ -216,7 +216,7 @@ export class WMatrix3 {
         return this;
     }
     copy() {
-        return new WMatrix3(this.get());
+        return new Matrix3(this.get());
     }
     sum(...mat) {
         const ret = [...this._data];
@@ -225,7 +225,7 @@ export class WMatrix3 {
                 ret[i] += v;
             });
         });
-        return new WMatrix3(ret);
+        return new Matrix3(ret);
     }
     mult(mat) {
         const a = this.get();
@@ -242,7 +242,7 @@ export class WMatrix3 {
                     a[2][i] * b[j][2];
             }
         }
-        return new WMatrix3(r);
+        return new Matrix3(r);
     }
     transpose() {
         const ret = [
@@ -259,8 +259,9 @@ export class WMatrix3 {
         return this._data.buffer;
     }
 }
-export class WTransformMatrix3 extends WMatrix3 {
+export class TransformMatrix3 extends Matrix3 {
     #translate;
+    #angle;
     #direct;
     #skew;
     #scale;
@@ -271,6 +272,7 @@ export class WTransformMatrix3 extends WMatrix3 {
         }
         else {
             this.#translate = value.translate ?? vec2(0);
+            this.#angle = value.rotate ?? 0;
             this.#direct = Vector2.fromDegree(value.rotate ?? 0);
             this.#skew = Math.tan(value.skew) ?? 0;
             this.#scale = value.scale ?? vec2(1);
@@ -292,6 +294,7 @@ export class WTransformMatrix3 extends WMatrix3 {
     calcFields() {
         const [m11, m12, , m21, m22, , m31, m32] = this._data;
         this.#direct = vec2(m11, m12).norm;
+        this.#angle = this.#direct.rotation;
         const sk = Math.atan2(m22, m21) - Math.PI / 2 - this.#direct.rotation;
         this.#skew = -Math.tan(sk);
         this.#scale = vec2(Math.sqrt(m11 ** 2 + m12 ** 2), Math.sqrt(m21 ** 2 + m22 ** 2) * Math.cos(sk));
@@ -319,10 +322,12 @@ export class WTransformMatrix3 extends WMatrix3 {
     rotate(v0, v1 = true, v2 = true) {
         if (typeof v1 == 'number') {
             this.#direct = vec2(v0, v1).norm;
+            this.#angle = this.#direct.rotation;
             if (v2)
                 this.calcMatrix();
         }
         else {
+            this.#angle = v0;
             this.#direct = Vector2.fromDegree(v0);
             if (v1)
                 this.calcMatrix();
@@ -361,7 +366,15 @@ export class WTransformMatrix3 extends WMatrix3 {
         ]);
     }
     copy() {
-        return new WTransformMatrix3(this._data);
+        return new TransformMatrix3(this._data);
+    }
+    copyFields(value) {
+        this.#translate = value.#translate;
+        this.#angle = value.#angle;
+        this.#direct = value.#direct;
+        this.#skew = value.#skew;
+        this.#scale = value.#scale;
+        this.calcMatrix();
     }
     setArray(value, offset) {
         this._data.set(value, offset);
@@ -378,6 +391,9 @@ export class WTransformMatrix3 extends WMatrix3 {
     }
     get r() {
         return this.#direct.rotation;
+    }
+    get rd() {
+        return this.#angle;
     }
     get sx() {
         return this.#scale.x;

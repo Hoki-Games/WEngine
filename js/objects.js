@@ -1,6 +1,6 @@
-import { WRenderer } from './graphics.js';
+import { Renderer } from './graphics.js';
 import { narrowColor, vec2 } from './math.js';
-import { WPhysicsModel } from './physics.js';
+import { PhysicsModel } from './physics.js';
 export class CustomObject {
     #drawMode;
     renderer;
@@ -10,7 +10,7 @@ export class CustomObject {
         this._vertsCount = vertsCount;
         this.#drawMode = drawMode;
         this.zIndex = zIndex;
-        this.renderer = new WRenderer({ scene, shaders });
+        this.renderer = new Renderer({ scene, shaders });
         this.renderer.init({ uniforms, attributes, textures });
     }
     draw() {
@@ -38,11 +38,11 @@ export class CustomObject {
         return this._vertsCount;
     }
 }
-export class WPositionedObject extends CustomObject {
+export class PositionedObject extends CustomObject {
     #physics;
     #ratio;
     _tris;
-    constructor({ scene, uniforms, attributes, textures, shaders, tris, physicsModel = new WPhysicsModel(), zIndex }) {
+    constructor({ scene, uniforms, attributes, textures, shaders, tris, physicsModel = new PhysicsModel(), zIndex }) {
         super({
             scene,
             zIndex,
@@ -111,7 +111,7 @@ export class WPositionedObject extends CustomObject {
         this.setUniform('u_ratio', Float32Array.of(v));
     }
 }
-export class WOneColorObject extends WPositionedObject {
+export class OneColorObject extends PositionedObject {
     color;
     constructor(scene, color, tris, zIndex) {
         const clr = Float32Array.from(narrowColor(color));
@@ -164,7 +164,7 @@ export class WOneColorObject extends WPositionedObject {
         this.color = clr;
     }
 }
-export class WTexPositionedObject extends WPositionedObject {
+export class TexPositionedObject extends PositionedObject {
     _uvmap;
     constructor({ scene, uniforms, attributes, textures, shaders, tris, uvmap, zIndex }) {
         super({
@@ -217,7 +217,7 @@ export class WTexPositionedObject extends WPositionedObject {
         this.renderer.updateAttribute('i_uvmap');
     }
 }
-export class WTextureObject extends WTexPositionedObject {
+export class TextureObject extends TexPositionedObject {
     img;
     constructor(img, scene, tris, uvmap, zIndex) {
         super({
@@ -288,7 +288,7 @@ export class WTextureObject extends WTexPositionedObject {
         this.img = img;
     }
 }
-export class LinesObject extends WOneColorObject {
+export class LinesObject extends OneColorObject {
     constructor({ scene, lines, width = .1, color = '#000', zIndex }) {
         const verts = [];
         for (const line of lines) {
@@ -311,7 +311,7 @@ export class LinesObject extends WOneColorObject {
         super(scene, color, verts, zIndex);
     }
 }
-export class CircleObject extends WPositionedObject {
+export class CircleObject extends PositionedObject {
     color;
     constructor({ scene, innerR = 0, location, scale = 1, color = '#000', zIndex }) {
         const clr = Float32Array.from(narrowColor(color));
@@ -388,7 +388,7 @@ export class CircleObject extends WPositionedObject {
                     [-1, -1]
                 ]
             ],
-            physicsModel: new WPhysicsModel({
+            physicsModel: new PhysicsModel({
                 location: vec2(...location),
                 scale: vec2(scale)
             }),

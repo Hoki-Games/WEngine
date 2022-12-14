@@ -49,11 +49,11 @@ export default class {
 	}
 
 	addShader(name: string, src: string) {
-		this.requests.shaders[name] = fetch(src).then(v => v.text())
+		this.requests.shaders[name] = fetch(src).then((v) => v.text())
 	}
 
 	addImage(name: string, src: string) {
-		this.requests.images[name] = new Promise(res => {
+		this.requests.images[name] = new Promise((res) => {
 			const img = new Image()
 			img.src = src
 			img.addEventListener('load', () => res(img))
@@ -61,7 +61,7 @@ export default class {
 	}
 
 	get response() {
-		return new Promise<Response>(res => {
+		return new Promise<Response>((res) => {
 			const promisesList: Promise<unknown>[] = []
 			const locs: ResLoc[] = []
 
@@ -75,13 +75,13 @@ export default class {
 				locs.push({ dir: 'images', name })
 			}
 
-			Promise.all(promisesList).then(v => {
+			Promise.all(promisesList).then((v) => {
 				const data: Response = {
 					shaders: {},
 					images: {}
 				}
 
-				v.forEach((v, i) => data[locs[i].dir][locs[i].name] = v)
+				v.forEach((v, i) => (data[locs[i].dir][locs[i].name] = v))
 
 				res(data)
 			})

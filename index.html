@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+	<script src="https://hoki-games.github.io/WEngine/dist/js/index.mjs" type="module"></script>
+	<script>
+		document.addEventListener('DOMContentLoaded', () => {
+			const s = new WEngine.Graphics.Scene({
+				canvas:document.getElementById('display'),
+				settings:{
+					backgroundColor:'#0000',
+					premultipliedAlpha:false,
+					enable:[WebGL2RenderingContext.BLEND],
+					blendFunc:[WebGL2RenderingContext.SRC_ALPHA, WebGL2RenderingContext.ONE_MINUS_SRC_ALPHA],
+					viewport:{x:0, y:0, width:100, height:100}
+				}
+			})
+			const hex = new WEngine.Shapes.RegularPolygon({radius:0.85, vertexCount:6})
+			s.addObject('s', new WEngine.Objects.OneColorObject(s, '#2b5738', [
+				[hex.vertices[0].arr, hex.vertices[1].arr, hex.vertices[5].arr],
+				[hex.vertices[5].arr, hex.vertices[1].arr, hex.vertices[4].arr],
+				[hex.vertices[1].arr, hex.vertices[2].arr, hex.vertices[4].arr],
+				[hex.vertices[4].arr, hex.vertices[2].arr, hex.vertices[3].arr]
+			], 1))
+			s.addObject('o', new WEngine.Objects.OneColorObject(s, '#3e863d', [
+				[hex.vertices[0].arr, hex.vertices[1].arr, hex.vertices[5].arr],
+				[hex.vertices[5].arr, hex.vertices[1].arr, hex.vertices[4].arr],
+				[hex.vertices[1].arr, hex.vertices[2].arr, hex.vertices[4].arr],
+				[hex.vertices[4].arr, hex.vertices[2].arr, hex.vertices[3].arr]
+			], 1))
+			s.addObject('h', new WEngine.Objects.OneColorObject(s, '#74b858', [
+				[hex.vertices[0].arr, hex.vertices[1].arr, hex.vertices[5].arr],
+				[hex.vertices[5].arr, hex.vertices[1].arr, hex.vertices[4].arr],
+				[hex.vertices[1].arr, hex.vertices[2].arr, hex.vertices[4].arr],
+				[hex.vertices[4].arr, hex.vertices[2].arr, hex.vertices[3].arr]
+			], 0))
+			s.objects['s'].physics.local.scale(1.1, 1.1).translate(-.04, -.03)
+			s.objects['o'].physics.local.scale(1.1, 1.1)
+			s.updateLocations(0)
+			s.draw()
+			document.getElementById('label')?.hidden = false
+		})
+	</script>
+	<style>
+		@font-face {
+			font-family: Pixel;
+			src: url('https://db.onlinewebfonts.com/t/a3620c0b63573282ebcccca50fe4c7b0.ttf') format('truetype');
+		}
+		body {
+			margin: 0;
+			background-color: #233056;
+		}
+		.wrapper {
+			position: relative;
+			top: calc(50vh - 294px);
+			left: calc(50vw - 294px);
+			width: min-content;
+		}
+		#display {
+			width: 588px;
+			height: 588px;
+			image-rendering: pixelated;
+		}
+		#label {
+			position: absolute;
+			top: 0;
+			left: 0;
+			line-height: 588px;
+			width: 588px;
+			text-align: center;
+			font-family: 'Pixel', monospace;
+			font-weight: bold;
+			font-size: 7rem;
+			color: white;
+			text-shadow: -3px 2px 0 #6c9879;
+		}
+		#label > span {
+			color: #ffcb00;
+		}
+	</style>
+</head>
+<body>
+	<div class="wrapper">
+		<canvas id="display" width="100" height="100"></canvas>
+		<div id="label" hidden><span>W</span>Engine</div>
+	</div>
+</body>
+</html>

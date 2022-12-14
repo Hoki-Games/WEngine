@@ -21,6 +21,7 @@ export default class TextureObject extends TexPositionedObject {
 
 				uniform vec2 u_origin;
 				uniform mat3 u_transform;
+				uniform float u_ratio;
 
 				in vec2 i_vertexPosition;
 				in vec2 i_uvmap;

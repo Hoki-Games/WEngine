@@ -20,7 +20,10 @@
     "rules": {
         "indent": [
             "warn",
-            "tab"
+            "tab",
+            {
+                "SwitchCase": 1
+            }
         ],
         "max-len": [
             "warn",
@@ -43,6 +46,8 @@
                 "allowedNames": ["me"]
             }
         ],
-        "no-constant-condition": "off"
+        "no-constant-condition": "off",
+        "@typescript-eslint/no-namespace": "off",
+        "@typescript-eslint/no-extra-semi": "off"
     }
 }

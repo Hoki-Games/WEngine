@@ -1,10 +1,15 @@
 {
-    "include": ["./src/**/*.ts"],
-    "exclude": ["./src/**/_*.ts"],
+    "include": ["./src/**/*"],
+    "exclude": ["./src/**/_*"],
     "compilerOptions": {
         "module": "ESNext",
         "target": "ESNext",
         "noEmitOnError": true,
-        "outDir": "./js"
+        "outDir": "./dist/js",
+        "declarationDir": "./dist/types",
+        "rootDir": "./src",
+        "declaration": true,
+        "composite": true,
+        "tsBuildInfoFile": "./.tsbuildinfo"
     }
 }

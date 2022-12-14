@@ -1,542 +1,176 @@
-import { Timed } from './animation.js'
-import {
-	narrowColor,
-	narrowDimension,
-	Color,
-	Dimension,
-	Vec4
-} from './math.js'
-import { BasicObject, PositionedObject } from './objects.js'
+import type { Types as MathTypes } from './math.js'
 
-export type UniformType = Int32Array | Uint32Array | Float32Array
-
-export type MatrixData = {
-	data: Float32Array,
-	dim: MatrixDim
-}
-
-export type MatrixDim = keyof typeof matrixDim
-interface Uniform {
-	location: WebGLUniformLocation
-	data: UniformType
-	type: 'i' | 'ui' | 'f' | MatrixDim
-}
-
-type AttributeType = 'BYTE' | 'SHORT' | 'UNSIGNED_BYTE'
-	| 'UNSIGNED_SHORT' | 'FLOAT' | 'HALF_FLOAT' | 'INT'
-export interface AttributeData {
-	data: ArrayBuffer
-	type: AttributeType
-	length: GLint
-}
-
-interface Attribute extends AttributeData {
-	location: GLuint
-}
-
-type Texture = {
-	data: TexImageSource
-	location: WebGLTexture
-	target: GLenum
-}
-
-type TexParams = {
-	[P in keyof typeof texParamMap]?: number | boolean
-}
-
-export type TexSettings = {
-	target?: GLenum
-	level?: GLint
-	internalformat?: GLint
-	width?: GLsizei
-	height?: GLsizei
-	border?: GLint
-	format?: GLenum
-	type?: GLenum
-	params?: TexParams
-}
-
-type GLData = {
-	uniforms: {
-		[key: string]: Uniform
+export namespace Types {
+	type ColorObject = {
+		r: GLclampf
+		g: GLclampf
+		b: GLclampf
+		a: GLclampf
 	}
-	buffers: {
-		[key: string]: WebGLBuffer
+	export type Color = ColorObject | MathTypes.Vec4<GLclampf> | `#${string}`
+
+	type DimensionObject = {
+		x: GLint
+		y: GLint
+		width: GLsizei
+		height: GLsizei
 	}
-	attributes: {
-		[key: string]: Attribute
-	}
-	textures: Texture[]
-}
+	export type Dimension =
+		| DimensionObject
+		| MathTypes.Vec4<GLint, GLint, GLsizei, GLsizei>
 
-export type Shader = {
-	source: string
-	type: 'VERTEX_SHADER' | 'FRAGMENT_SHADER'
-}
-
-type Settings = {
-	backgroundColor: Color
-	premultipliedAlpha?: boolean
-	viewport: Dimension
-	enable?: GLenum[]
-	depthFunc?: GLenum
-	blendFunc?: [GLenum, GLenum]
-}
-
-export class Scene {
-	display: HTMLCanvasElement
-	gl: WebGL2RenderingContext
-	settings: {
-		backgroundColor: Vec4<GLclampf>
-		viewport: Vec4<GLint, GLint, GLsizei, GLsizei>
-		enable: GLenum[]
-		depthFunc: GLenum
-		blendFunc: [GLenum, GLenum]
-	}
-	objects: Record<string, BasicObject>
-	animations: Timed[]
-
-	constructor({
-		canvas,
-		settings
-	}: {
-		canvas: HTMLCanvasElement
-		settings: Settings
-	}) {
-		this.display = canvas;
-		this.gl = canvas.getContext('webgl2', {
-			premultipliedAlpha: settings.premultipliedAlpha ?? true
-		});
-		this.settings = {
-			backgroundColor: narrowColor(settings.backgroundColor),
-			viewport: narrowDimension(settings.viewport),
-			depthFunc: settings.depthFunc ?? WebGL2RenderingContext.LEQUAL,
-			blendFunc: settings.blendFunc ?? [
-				WebGL2RenderingContext.ONE,
-				WebGL2RenderingContext.ONE_MINUS_SRC_ALPHA
-			],
-			enable: settings.enable ?? []
-		}
-		this.objects = {}
-		this.animations = []
-
-		this.init()
+	export interface Uniform {
+		location: WebGLUniformLocation
+		data: UniformType
+		type: 'i' | 'ui' | 'f' | MatrixDim
 	}
 
-	init() {
-		this.gl.clearColor(...this.settings.backgroundColor)
+	export type AttributeType =
+		| 'BYTE'
+		| 'SHORT'
+		| 'UNSIGNED_BYTE'
+		| 'UNSIGNED_SHORT'
+		| 'FLOAT'
+		| 'HALF_FLOAT'
+		| 'INT'
 
-		this.settings.enable.forEach(v => this.gl.enable(v))
-
-		this.gl.depthFunc(this.settings.depthFunc);
-		this.gl.blendFunc(...this.settings.blendFunc)
-
-		this.gl.blendFunc(...this.settings.blendFunc)
-
-		this.resize()
-	}
-
-	draw() {
-		this.gl.clear(
-			WebGL2RenderingContext.COLOR_BUFFER_BIT |
-			WebGL2RenderingContext.DEPTH_BUFFER_BIT
-		);
-
-		Object.values(this.objects)
-			.sort((a, b) => b.zIndex - a.zIndex)
-			.forEach(v => v.draw())
-	}
-
-	resize() {
-		this.gl.viewport(...this.settings.viewport)
-	}
-
-	updateLocations(dt: number) {
-		for (const name in this.objects) {
-			const obj = this.objects[name]
-			if (obj instanceof PositionedObject)
-				obj.physics.updateLocation(dt)
-		}
-	}
-
-	addObject(name: string, value: BasicObject): void
-	addObject(entries: [string, BasicObject][]): void
-	addObject(entries: Record<string, BasicObject>): void
-	addObject(
-		arg1: string 
-			| [string, BasicObject][] 
-			| Record<string, BasicObject>,
-		arg2?: BasicObject
-	) {
-		if (typeof arg1 == 'string') {
-			this.objects[arg1] = arg2;
-		} else if (Array.isArray(arg1)) {
-			arg1.forEach(([n, v]) => this.objects[n] = v)
-		} else {
-			for (const name in arg1) {
-				this.objects[name] = arg1[name]
-			}
-		}
-	}
-
-	removeObject(...name: string[]) {
-		name.forEach(v => delete this.objects[v])
-	}
-
-	clearObjects() {
-		this.objects = {}
-	}
-
-	addAnimation(...animations: Timed[]) {
-		this.animations = [...this.animations, ...animations]
-	}
-
-	updateAnimations(time: number) {
-		this.animations.forEach(v => v.update(time))
-	}
-}
-
-const texParamMap = {
-	PACK_ALIGNMENT: 'pixelStoreI',
-	UNPACK_ALIGNMENT: 'pixelStoreI',
-	UNPACK_FLIP_Y_WEBGL: 'pixelStoreI',
-	UNPACK_PREMULTIPLY_ALPHA_WEBGL: 'pixelStoreI',
-	UNPACK_COLORSPACE_CONVERSION_WEBGL: 'pixelStoreI',
-	PACK_ROW_LENGTH: 'pixelStoreI',
-	PACK_SKIP_PIXELS: 'pixelStoreI',
-	PACK_SKIP_ROWS: 'pixelStoreI',
-	UNPACK_ROW_LENGTH: 'pixelStoreI',
-	UNPACK_IMAGE_HEIGHT: 'pixelStoreI',
-	UNPACK_SKIP_PIXELS: 'pixelStoreI',
-	UNPACK_SKIP_ROWS: 'pixelStoreI',
-	UNPACK_SKIP_IMAGES: 'pixelStoreI',
-	TEXTURE_MAG_FILTER: 'texI',
-	TEXTURE_MIN_FILTER: 'texI',
-	TEXTURE_WRAP_S: 'texI',
-	TEXTURE_WRAP_T: 'texI',
-	TEXTURE_BASE_LEVEL: 'texI',
-	TEXTURE_COMPARE_FUN: 'texI',
-	TEXTURE_COMPARE_MOD: 'texI',
-	TEXTURE_MAX_LEVEL: 'texI',
-	TEXTURE_WRAP_R: 'texI',
-	TEXTURE_MAX_LOD: 'texF',
-	TEXTURE_MIN_LOD: 'texF'
-} as const
-
-const matrixDim = {
-	'2': 4,
-	'2x3': 6,
-	'2x4': 8,
-	'3x2': 6,
-	'3': 9,
-	'3x4': 12,
-	'4x2': 8,
-	'4x3': 12,
-	'4': 16
-} as const
-
-export class Renderer {
-	#data: GLData
-
-	scene: Scene
-	program: WebGLProgram
-	shaders: WebGLShader[]
-
-	constructor({
-		scene,
-		shaders = []
-	}: {
-		scene: Scene
-		shaders?: Shader[]
-	}) {
-		this.scene = scene
-
-		this.#data = {
-			uniforms: {},
-			buffers: {},
-			attributes: {},
-			textures: []
-		};
-
-		const gl = scene.gl
-		
-		this.program = gl.createProgram();
-
-		this.shaders = shaders.map(s => {
-			const shader = gl.createShader(WebGL2RenderingContext[s.type]);
-			
-			gl.shaderSource(shader, s.source);
-
-			gl.compileShader(shader);
-			
-			gl.attachShader(this.program, shader);
-
-			return shader;
-		})
-
-		gl.linkProgram(this.program)
-	}
-
-	init({
-		uniforms = {},
-		attributes = {},
-		textures = []
-	}: {
-		uniforms?: Record<string, UniformType | MatrixData>
-		attributes?: Record<string, AttributeData>
-		textures?: {
-			img: TexImageSource
-			settings?: TexSettings
-		}[]
-	} = {}) {
-		for (const name in uniforms) {
-			const val = uniforms[name]
-
-			if ('dim' in val) this.setUniform(name, val.data, val.dim)
-			else this.setUniform(name, val)
-		}
-
-		for (const name in attributes) {
-			const attr = attributes[name]
-			this.setAttribute(
-				name,
-				attr.data,
-				attr.type,
-				attr.length
-			);
-		}
-
-		textures.forEach((v, id) => {
-			this.setTexture({
-				id,
-				img: v.img,
-				settings: v.settings
-			})
-		})
-	}
-
-	draw(vertsCount: GLsizei, mode: GLenum = WebGL2RenderingContext.TRIANGLES) {
-		this.scene.gl.useProgram(this.program);
-
-		this.#data.textures.forEach((v, i) => {
-			this.scene.gl.activeTexture(WebGL2RenderingContext.TEXTURE0 + i);
-			this.scene.gl.bindTexture(v.target, v.location);
-		})
-
-		for (const name in this.#data.uniforms) {
-			const uni = this.#data.uniforms[name]
-			const type = uni.type
-	
-			if (type in matrixDim) {
-				const func = <const>`uniformMatrix${<MatrixDim>type}fv`
-
-				this.scene.gl[func](
-					uni.location,
-					false,
-					uni.data
-				)
-			} else {
-				const length = <1 | 2 | 3 | 4>uni.data.length
-				const func = <const>`uniform${length}${<'i'|'ui'|'f'>type}v`
-
-				this.scene.gl[func](
-					uni.location,
-					uni.data
-				)
-			}
-		}
-
-		for (const name in this.#data.attributes) {
-			const attr = this.#data.attributes[name]
-			this.scene.gl.bindBuffer(
-				this.scene.gl.ARRAY_BUFFER,
-				this.#data.buffers[name]
-			);
-			if (
-				attr.type == 'INT'
-			) {
-				this.scene.gl.vertexAttribIPointer(
-					attr.location,
-					attr.length,
-					WebGL2RenderingContext.INT,
-					0,
-					0
-				);
-			} else {
-				this.scene.gl.vertexAttribPointer(
-					attr.location,
-					attr.length,
-					WebGL2RenderingContext[attr.type],
-					false,
-					0,
-					0
-				);
-			}
-			this.scene.gl.enableVertexAttribArray(
-				attr.location
-			);
-		}
-
-		this.scene.gl.drawArrays(mode, 0, vertsCount)
-	}
-
-	getAttribute(name: string) {
-		return this.#data.attributes[name].data;
-	}
-	setAttribute(
-		name: string,
-		value: ArrayBuffer,
-		type: AttributeType,
+	export interface AttributeData {
+		data: ArrayBuffer
+		type: AttributeType
 		length: GLint
-	) {
-		if (!(name in this.#data.attributes)) {
-			this.#data.attributes[name] = {
-				data: value,
-				location: this.scene.gl.getAttribLocation(
-					this.program,
-					name
-				),
-				type,
-				length
-			}
-			this.#data.buffers[name] = this.scene.gl.createBuffer();
-		}
-		this.#data.attributes[name].data = value;
-		this.updateAttribute(name)
-	}
-	
-	updateAttribute(name: string) {
-		this.scene.gl.bindBuffer(
-			this.scene.gl.ARRAY_BUFFER,
-			this.#data.buffers[name]
-		)
-		this.scene.gl.bufferData(
-			this.scene.gl.ARRAY_BUFFER,
-			this.getAttribute(name),
-			this.scene.gl.STATIC_DRAW
-		);
-	}
-	
-	getUniform(name: string) {
-		return this.#data.uniforms[name].data;
-	}
-	setUniform(name: string, value: UniformType): void
-	setUniform(name: string, matrix: Float32Array, dim: MatrixDim): void
-	setUniform(
-		name: string,
-		value: UniformType,
-		matrix?: MatrixDim
-	) {
-		let type: Uniform['type']
-		if (!matrix) {
-			type = (() => {switch (value.constructor) {
-			case Int32Array: return 'i'
-			case Uint32Array: return 'ui'
-			case Float32Array: return 'f'
-			default: throw new Error('Invalid data type')
-			}})()
-
-			if (value.length < 1 || value.length > 4)
-				throw new Error('Array length must be in bounds [1, 4]');
-		} else {
-			type = matrix
-
-			if (!(value instanceof Float32Array))
-				throw new Error('Invalid data type')
-
-			if (value.length != matrixDim[matrix])
-				throw new Error(`Array length must be [${matrixDim[matrix]}]`)
-		}
-
-		if (!(name in this.#data.uniforms)) {
-			this.#data.uniforms[name] = {
-				location: this.scene.gl.getUniformLocation(
-					this.program,
-					name
-				),
-				data: value,
-				type
-			}
-		}
-		this.#data.uniforms[name].data = value;
 	}
 
-	getTexture(id: number) {
-		return this.#data.textures[id].data;
+	export interface Attribute extends AttributeData {
+		location: GLuint
 	}
-	setTexture({
-		id,
-		img,
-		settings = {}
-	}: {
-		id: number
-		img: TexImageSource
-		settings?: TexSettings
-	}) {
-		const target = settings.target ?? WebGL2RenderingContext.TEXTURE_2D;
-		const level = settings.target ?? 0;
-		const internalformat =
-			settings.internalformat ?? WebGL2RenderingContext.RGBA;
-		const width = settings.width ?? img.width;
-		const height = settings.height ?? img.height;
-		const border = settings.border ?? 0;
-		const format = settings.format ?? WebGL2RenderingContext.RGBA;
-		const type = settings.type ?? WebGL2RenderingContext.UNSIGNED_BYTE;
-		type Param = {
-			name: GLenum
-			value: number | boolean
+
+	export type Settings = {
+		backgroundColor: Color
+		premultipliedAlpha?: boolean
+		viewport: Dimension
+		enable?: GLenum[]
+		depthFunc?: GLenum
+		blendFunc?: [GLenum, GLenum]
+	}
+
+	export type UniformType = Int32Array | Uint32Array | Float32Array
+
+	export type MatrixData = {
+		data: Float32Array
+		dim: MatrixDim
+	}
+
+	export type MatrixDim =
+		| '2'
+		| '2x3'
+		| '2x4'
+		| '3x2'
+		| '3'
+		| '3x4'
+		| '4x2'
+		| '4x3'
+		| '4'
+
+	export type Shader = {
+		source: string
+		type: 'VERTEX_SHADER' | 'FRAGMENT_SHADER'
+	}
+
+	export type Texture = {
+		data: TexImageSource
+		location: WebGLTexture
+		target: GLenum
+	}
+
+	export type GLData = {
+		uniforms: {
+			[key: string]: Types.Uniform
 		}
-		const params = {
-			pixelStoreI: <Param[]>[],
-			texI: <Param[]>[],
-			texF: <Param[]>[]
+		buffers: {
+			[key: string]: WebGLBuffer
 		}
-		
-		if (settings?.params) {
-			for (const name in settings.params) {
-				(<Param[]>params[texParamMap[name]]).push({
-					name: WebGL2RenderingContext[name],
-					value: settings.params[name]
-				})
-			}
+		attributes: {
+			[key: string]: Types.Attribute
 		}
+		textures: Texture[]
+	}
 
-		const gl = this.scene.gl;
-		
-		const texture = gl.createTexture();
-		
-		gl.bindTexture(target, texture)
+	export type TexParams = {
+		[P in
+			| 'PACK_ALIGNMENT'
+			| 'UNPACK_ALIGNMENT'
+			| 'UNPACK_FLIP_Y_WEBGL'
+			| 'UNPACK_PREMULTIPLY_ALPHA_WEBGL'
+			| 'UNPACK_COLORSPACE_CONVERSION_WEBGL'
+			| 'PACK_ROW_LENGTH'
+			| 'PACK_SKIP_PIXELS'
+			| 'PACK_SKIP_ROWS'
+			| 'UNPACK_ROW_LENGTH'
+			| 'UNPACK_IMAGE_HEIGHT'
+			| 'UNPACK_SKIP_PIXELS'
+			| 'UNPACK_SKIP_ROWS'
+			| 'UNPACK_SKIP_IMAGES'
+			| 'TEXTURE_MAG_FILTER'
+			| 'TEXTURE_MIN_FILTER'
+			| 'TEXTURE_WRAP_S'
+			| 'TEXTURE_WRAP_T'
+			| 'TEXTURE_BASE_LEVEL'
+			| 'TEXTURE_COMPARE_FUN'
+			| 'TEXTURE_COMPARE_MOD'
+			| 'TEXTURE_MAX_LEVEL'
+			| 'TEXTURE_WRAP_R'
+			| 'TEXTURE_MAX_LOD'
+			| 'TEXTURE_MIN_LOD']?: number | boolean
+	}
 
-		params.pixelStoreI.forEach(v => gl.pixelStorei(v.name, v.value))
-
-		gl.texImage2D(
-			target,
-			level,
-			internalformat,
-			width,
-			height,
-			border,
-			format,
-			type,
-			img
-		);
-
-		params.texI.forEach(v => gl.texParameteri(
-			target,
-			v.name,
-			<GLint>v.value
-		));
-
-		params.texF.forEach(v => gl.texParameterf(
-			target, 
-			v.name, 
-			<GLfloat>v.value
-		));
-
-		this.#data.textures[id] = {
-			data: img,
-			location: texture,
-			target
-		};
+	export type TexSettings = {
+		target?: GLenum
+		level?: GLint
+		internalformat?: GLint
+		width?: GLsizei
+		height?: GLsizei
+		border?: GLint
+		format?: GLenum
+		type?: GLenum
+		params?: TexParams
 	}
 }
+
+export { default as Renderer } from './graphics/Renderer.js'
+export { default as Scene } from './graphics/Scene.js'
+
+export const narrowColor = (color: Types.Color): MathTypes.Vec4<GLclampf> => {
+	let ret: MathTypes.Vec4<GLclampf>
+
+	if (Array.isArray(color)) ret = [...color]
+	else if (typeof color == 'object')
+		ret = [color.r, color.g, color.b, color.a]
+	else {
+		const b4 = '([0-Fa-f])'.repeat(4)
+		const b8 = '([0-Fa-f][0-Fa-f])'.repeat(4)
+
+		const rgba4 = new RegExp(`^#${b4}?$`).exec(color)
+		const rgba8 = new RegExp(`^#${b8}?$`).exec(color)
+
+		if (rgba4)
+			ret = <MathTypes.Vec4<GLclampf>>(
+				rgba4.slice(1).map((v) => parseInt(v, 16) / 15)
+			)
+		else if (rgba8)
+			ret = <MathTypes.Vec4<GLclampf>>(
+				rgba8.slice(1).map((v) => parseInt(v, 16) / 255)
+			)
+		else throw new Error('Invalid color data', { cause: color })
+	}
+
+	if (Number.isNaN(ret[3])) ret[3] = 1
+
+	return ret
+}
+
+export const narrowDimension = (
+	color: Types.Dimension
+): MathTypes.Vec4<GLint, GLint, GLsizei, GLsizei> =>
+	Array.isArray(color)
+		? [...color]
+		: [color.x, color.y, color.width, color.height]
